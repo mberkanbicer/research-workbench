@@ -36,6 +36,13 @@ docker-compose.override.yml
 # Test outputs
 coverage/
 
+# Nx cache
+node-compile-cache/
+nx-native-file-cache-*/
+
 # Misc
 *.pid
 c.txt
+staging-*.log
+api.log
+web.log
