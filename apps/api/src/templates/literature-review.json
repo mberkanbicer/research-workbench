@@ -1,0 +1,12 @@
+{
+  "id": "literature-review",
+  "name": "Systematic Literature Review",
+  "description": "Structured review of academic literature on a topic",
+  "goalTemplate": "Conduct a systematic review of {topic} to identify key findings, methodological trends, and research gaps.",
+  "initialClaims": [
+    { "text": "The existing literature provides sufficient coverage of {topic}", "type": "research", "criticality": "high" },
+    { "text": "Research methodologies in this field are rigorous and reproducible", "type": "research", "criticality": "medium" },
+    { "text": "There are identifiable gaps in the current research", "type": "research", "criticality": "high" }
+  ],
+  "searchQueries": ["{topic} systematic review", "{topic} meta-analysis", "{topic} research gaps"]
+}

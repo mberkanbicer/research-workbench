@@ -1,0 +1,538 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String            @id @default(uuid())
+  email          String            @unique
+  passwordHash   String
+  name           String?
+  defaultSearchProvider String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  projects       ResearchProject[]
+  sessions       AuthSession[]
+  modelConfigs   ModelConfig[]
+  apiKeys        UserApiKey[]
+}
+
+model AuthSession {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([token])
+}
+
+model ResearchProject {
+  id               String            @id @default(uuid())
+  title            String
+  goal             String
+  currentSynthesis String?
+  status           String            @default("active")
+  staleThresholdDays Int             @default(180)
+  userId           String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  user             User?             @relation(fields: [userId], references: [id])
+  claims           Claim[]
+  critiques        Critique[]
+  decisions        DecisionRecord[]
+  evidence         Evidence[]
+  hypotheses       Hypothesis[]
+  ideaVersions     IdeaVersion[]
+  modelReviews     ModelReview[]
+  rawEvents        RawEvent[]
+  sessions         ResearchSession[]
+  tasks            ResearchTask[]
+  runEvents        RunEvent[]
+  literatureReviews LiteratureReview[]
+}
+
+model LiteratureReview {
+  id              String          @id @default(uuid())
+  projectId       String
+  title           String
+  researchQuestion String
+  status          String          @default("in_progress")
+  searchStrategy  Json?
+  prismaFlow      Json?
+  findings        Json?
+  gaps            Json?
+  conclusion      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  project         ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model ResearchSession {
+  id          String          @id @default(uuid())
+  projectId   String
+  sessionGoal String
+  startedAt   DateTime        @default(now())
+  endedAt     DateTime?
+  summary     String?
+  status      String          @default("active")
+  project     ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model IdeaVersion {
+  id                          String           @id @default(uuid())
+  projectId                   String
+  versionNumber               Int
+  title                       String
+  description                 String
+  status                      String           @default("under_review")
+  changesFromPrevious         Json?
+  createdBecauseOfCritiqueIds Json?
+  createdAt                   DateTime         @default(now())
+  claims                      Claim[]
+  critiques                   Critique[]
+  decisions                   DecisionRecord[]
+  project                     ResearchProject  @relation(fields: [projectId], references: [id])
+  modelReviews                ModelReview[]
+
+  @@unique([projectId, versionNumber])
+}
+
+model Claim {
+  id               String          @id @default(uuid())
+  projectId        String
+  ideaVersionId    String
+  text             String
+  type             String
+  requiresEvidence Boolean         @default(true)
+  criticality      String
+  status           String          @default("unverified")
+  confidence       Float?
+  createdAt        DateTime        @default(now())
+  ideaVersion      IdeaVersion     @relation(fields: [ideaVersionId], references: [id])
+  project          ResearchProject @relation(fields: [projectId], references: [id])
+  dependencies     ClaimDependency[] @relation("fromClaim")
+  dependents       ClaimDependency[] @relation("toClaim")
+}
+
+model ClaimDependency {
+  id            String   @id @default(uuid())
+  fromClaimId   String
+  toClaimId     String
+  relation      String   @default("depends_on")
+  createdAt     DateTime @default(now())
+  fromClaim     Claim    @relation("fromClaim", fields: [fromClaimId], references: [id])
+  toClaim       Claim    @relation("toClaim", fields: [toClaimId], references: [id])
+  @@unique([fromClaimId, toClaimId])
+}
+
+model Hypothesis {
+  id                  String          @id @default(uuid())
+  projectId           String
+  ideaVersionId       String?
+  statement           String
+  status              String          @default("unexamined")
+  confidence          Float?
+  acceptedEvidenceIds Json?
+  counterEvidenceIds  Json?
+  openQuestions       Json?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  project             ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model ResearchTask {
+  id              String          @id @default(uuid())
+  projectId       String
+  claimId         String?
+  ideaVersionId   String?
+  title           String
+  objective       String
+  role            String
+  priority        String
+  status          String          @default("todo")
+  assignedModelId String?
+  outputIds       Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  project         ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model Evidence {
+  id                  String               @id @default(uuid())
+  projectId           String
+  claimId             String?
+  discoveredByModelId String?
+  sourceUrl           String?
+  title               String
+  publisher           String?
+  publishedAt         DateTime?
+  retrievedAt         DateTime             @default(now())
+  sourceType          String
+  excerpt             String?
+  summary             String?
+  rawContentRef       String?
+  reliability         String               @default("pending")
+  relevance           String               @default("pending")
+  status              String               @default("pending_review")
+  stalenessRisk       String               @default("medium")
+  isCounter           Boolean              @default(false)
+  lastVerifiedAt      DateTime?
+  createdAt           DateTime             @default(now())
+  project             ResearchProject      @relation(fields: [projectId], references: [id])
+  assessments         EvidenceAssessment[]
+  customScores        EvidenceCustomScore[]
+}
+
+model EvidenceAssessment {
+  id                    String   @id @default(uuid())
+  evidenceId            String
+  reviewerModelId       String
+  reliability           String
+  relevance             String
+  interpretationVerdict String
+  detectedProblems      Json?
+  notes                 String
+  finalVerdict          String
+  createdAt             DateTime @default(now())
+  evidence              Evidence @relation(fields: [evidenceId], references: [id])
+}
+
+model ModelConfig {
+  id                     String      @id @default(uuid())
+  userId                 String?
+  name                   String
+  provider               String
+  model                  String
+  baseUrl                String?
+  apiKeyRef              String?
+  contextWindow          Int
+  preferredMaxInputRatio Float       @default(0.5)
+  outputReserveRatio     Float       @default(0.2)
+  defaultTemperature     Float       @default(0.2)
+  supportsStreaming      Boolean     @default(false)
+  supportsJsonMode       Boolean     @default(false)
+  isEnabled              Boolean     @default(true)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  user                   User?       @relation(fields: [userId], references: [id])
+  calls                  ModelCall[]
+}
+
+model UserApiKey {
+  id             String   @id @default(uuid())
+  userId         String
+  label          String
+  provider       String
+  keyPrefix      String
+  keyHash        String
+  encryptedKey   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model ModelCall {
+  id                String      @id @default(uuid())
+  projectId         String?
+  taskId            String?
+  modelConfigId     String
+  provider          String
+  model             String
+  messages          Json
+  responseText      String?
+  responseJson      Json?
+  usage             Json?
+  status            String      @default("pending")
+  error             String?
+  contextManifestId String?
+  createdAt         DateTime    @default(now())
+  completedAt       DateTime?
+  modelConfig       ModelConfig @relation(fields: [modelConfigId], references: [id])
+}
+
+model ModelReview {
+  id                 String          @id @default(uuid())
+  projectId          String
+  ideaVersionId      String
+  modelId            String
+  verdict            String
+  strengths          Json?
+  weaknesses         Json?
+  blockingIssues     Json?
+  supportedClaims    Json?
+  unsupportedClaims  Json?
+  suggestedRevisions Json?
+  confidence         Float?
+  createdAt          DateTime        @default(now())
+  ideaVersion        IdeaVersion     @relation(fields: [ideaVersionId], references: [id])
+  project            ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model Critique {
+  id            String             @id @default(uuid())
+  projectId     String
+  ideaVersionId String
+  criticModelId String
+  targetType    String
+  targetId      String
+  critiqueType  String
+  severity      String
+  text          String
+  whyItMatters  String
+  proposedFix   String?
+  evidenceIds   Json?
+  status        String             @default("open")
+  createdAt     DateTime           @default(now())
+  ideaVersion   IdeaVersion        @relation(fields: [ideaVersionId], references: [id])
+  project       ResearchProject    @relation(fields: [projectId], references: [id])
+  responses     CritiqueResponse[]
+}
+
+model CritiqueResponse {
+  id                String   @id @default(uuid())
+  critiqueId        String
+  targetModelId     String?
+  verdict           String
+  reason            String
+  positionChange    String
+  revisedClaim      String?
+  requestedEvidence Json?
+  createdAt         DateTime @default(now())
+  critique          Critique @relation(fields: [critiqueId], references: [id])
+}
+
+model DecisionRecord {
+  id                  String          @id @default(uuid())
+  projectId           String
+  ideaVersionId       String
+  decisionStatus      String
+  decisionText        String
+  whyGood             Json?
+  whyBad              Json?
+  knownWeaknesses     Json?
+  acceptedEvidenceIds Json?
+  counterEvidenceIds  Json?
+  resolvedCritiqueIds Json?
+  unresolvedRisks     Json?
+  modelFinalVotes     Json?
+  reopenConditions    Json?
+  nextActions         Json?
+  createdAt           DateTime        @default(now())
+  ideaVersion         IdeaVersion     @relation(fields: [ideaVersionId], references: [id])
+  project             ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model ContextManifest {
+  id                  String   @id @default(uuid())
+  projectId           String
+  taskId              String?
+  modelId             String
+  includedClaims      Json?
+  includedEvidence    Json?
+  includedCritiques   Json?
+  includedDecisions   Json?
+  includedRawEvents   Json?
+  excludedButRelevant Json?
+  tokenBudget         Int
+  tokenUsed           Int?
+  retrievalReason     Json?
+  createdAt           DateTime @default(now())
+}
+
+model Summary {
+  id                 String   @id @default(uuid())
+  projectId          String
+  scope              String
+  text               String
+  sourceEventIds     Json?
+  sourceObjectIds    Json?
+  generatedByModelId String?
+  reviewedByModelIds Json?
+  status             String   @default("active")
+  createdAt          DateTime @default(now())
+}
+
+model KnowledgeEdge {
+  id        String   @id @default(uuid())
+  fromType  String
+  fromId    String
+  toType    String
+  toId      String
+  relation  String
+  createdAt DateTime @default(now())
+
+  @@index([fromType, fromId])
+  @@index([toType, toId])
+}
+
+model RawEvent {
+  id        String          @id @default(uuid())
+  projectId String
+  type      String
+  payload   Json
+  sourceIds Json?
+  createdBy String
+  hash      String
+  createdAt DateTime        @default(now())
+  project   ResearchProject @relation(fields: [projectId], references: [id])
+}
+
+model RunEvent {
+  id        String          @id @default(uuid())
+  runId     String
+  projectId String
+  type      String
+  payload   Json?
+  createdAt DateTime        @default(now())
+  project   ResearchProject @relation(fields: [projectId], references: [id])
+
+  @@index([runId])
+}
+
+model SourceEmbedding {
+  id         String   @id @default(uuid())
+  projectId  String
+  objectType String
+  objectId   String
+  text       String
+  // NOTE: Stored as JSON.stringify(number[]) for MVP.
+  // When upgrading to pgvector: change to `Unsupported("vector(768)")`
+  // and use $queryRaw for cosine similarity searches.
+  embedding  String?
+  createdAt  DateTime @default(now())
+
+  @@index([projectId, objectType, objectId])
+}
+
+model RunStage {
+  id        String      @id @default(uuid())
+  runId     String
+  stageName String
+  status    StageStatus @default(PENDING)
+  error     String?
+  attempts  Int         @default(1)
+  updatedAt DateTime    @updatedAt
+
+  @@unique([runId, stageName])
+}
+
+enum StageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PAUSED
+}
+
+model PromptVersion {
+  id        String   @id @default(uuid())
+  role      String
+  version   Int
+  text      String
+  reason    String   @default("Initial version")
+  createdAt DateTime @default(now())
+
+  @@unique([role, version])
+  @@index([role])
+}
+
+model PromptCall {
+  id           String   @id @default(uuid())
+  role         String
+  version      Int
+  qualityScore Float
+  isUsable     Boolean  @default(true)
+  issues       Json?
+  createdAt    DateTime @default(now())
+
+  @@index([role, version])
+}
+
+model UserFeedback {
+  id             String   @id @default(uuid())
+  projectId      String
+  targetType     String   // 'critique' | 'evidence' | 'model_review'
+  targetId       String
+  feedbackType   String   // 'positive' | 'negative'
+  category       String?  // 'helpful' | 'accurate' | 'relevant' | 'unclear' | 'wrong' | 'biased'
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  @@index([projectId, targetType, targetId])
+}
+
+model ClaimConfidenceHistory {
+  id         String   @id @default(uuid())
+  claimId    String
+  projectId  String
+  confidence Float
+  round      Int
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([claimId])
+  @@index([projectId])
+}
+
+model Annotation {
+  id         String   @id @default(uuid())
+  projectId  String
+  entityType String
+  entityId   String
+  authorId   String?
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([projectId])
+}
+
+model EvaluationCriteria {
+  id          String   @id @default(uuid())
+  projectId   String
+  name        String
+  description String
+  scale       String   @default("low/medium/high")
+  weight      Float    @default(1.0)
+  createdAt   DateTime @default(now())
+  scores      EvidenceCustomScore[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model EvidenceCustomScore {
+  id         String   @id @default(uuid())
+  evidenceId String
+  criteriaId String
+  score      String
+  modelId    String?
+  createdAt  DateTime @default(now())
+
+  evidence   Evidence     @relation(fields: [evidenceId], references: [id])
+  criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id])
+
+  @@unique([evidenceId, criteriaId])
+  @@index([evidenceId])
+}
+
+model UserPresence {
+  id         String   @id @default(uuid())
+  projectId  String
+  userId     String?
+  userName   String
+  page       String
+  lastSeenAt DateTime @default(now())
+
+  @@index([projectId])
+  @@index([lastSeenAt])
+}

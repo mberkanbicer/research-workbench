@@ -1,0 +1,14 @@
+{
+  "vote": "accept_with_reservations",
+  "reason": "The approach has merit and the pipeline correctly identifies evidence gaps. Reservations about scalability remain.",
+  "reservations": [
+    "Evidence quality floor not yet satisfied",
+    "Need more diverse search sources"
+  ],
+  "blockingIssues": [],
+  "requiredChanges": [
+    "Add more search providers",
+    "Improve evidence discovery recall"
+  ],
+  "confidence": 0.65
+}

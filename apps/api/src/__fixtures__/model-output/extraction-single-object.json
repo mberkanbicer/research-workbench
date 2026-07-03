@@ -1,0 +1,19 @@
+{
+  "claims": {
+    "text": "Single claim delivered as object instead of array.",
+    "type": "research",
+    "requiresEvidence": true,
+    "criticality": "high",
+    "reason": "Testing schema's ability to handle single-object claims"
+  },
+  "hypotheses": [
+    {
+      "statement": "Schema transforms single claim objects into arrays",
+      "whyItMatters": "Ensures robustness against common model output patterns",
+      "requiredEvidenceType": "any"
+    }
+  ],
+  "openQuestions": [
+    "Does the schema gracefully handle this edge case?"
+  ]
+}

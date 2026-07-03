@@ -1,0 +1,12 @@
+{
+  "id": "technical-feasibility",
+  "name": "Technical Feasibility Assessment",
+  "description": "Evaluate technical viability, risks, and implementation approach",
+  "goalTemplate": "Assess the technical feasibility of {topic} including implementation risks, resource requirements, and alternative approaches.",
+  "initialClaims": [
+    { "text": "The proposed technical approach is sound", "type": "technical", "criticality": "high" },
+    { "text": "Required technologies are mature and well-supported", "type": "technical", "criticality": "medium" },
+    { "text": "Performance requirements can be met with available resources", "type": "technical", "criticality": "high" }
+  ],
+  "searchQueries": ["{topic} technical architecture", "{topic} performance benchmarks", "{topic} implementation guide"]
+}

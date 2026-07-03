@@ -1,0 +1,57 @@
+# ── Root .dockerignore ──────────────────────────────────────────────────────
+# Exclude everything by default, then allow specific files
+**
+
+# Allow project files
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!package.json
+!tsconfig.base.json
+!Dockerfile.api
+!Dockerfile.web
+!docker-compose.yml
+!docker-compose.prod.yml
+!nginx.conf
+!.env.example
+
+# Allow packages
+!packages/**/package.json
+!packages/**/src/**
+!packages/**/tsconfig.json
+!packages/*/package.json
+
+# Allow API
+!apps/api/**/*
+!apps/api/package.json
+!apps/api/tsconfig.json
+!apps/api/src/**
+!apps/api/prisma/**
+
+# Allow Web
+!apps/web/**/*
+!apps/web/package.json
+!apps/web/tsconfig.json
+!apps/web/next.config.js
+!apps/web/src/**
+!apps/web/public/**
+!apps/web/tailwind.config.js
+!apps/web/postcss.config.js
+
+# Exclude development artifacts
+**/node_modules/**
+**/dist/**
+**/.next/**
+**/coverage/**
+**/.env
+**/.env.local
+*.log
+.git
+.github
+docs
+templates
+test-worker.ts
+test-real-provider.ts
+*.test.ts
+*.test.tsx
+vitest.config.*
+test-setup.*

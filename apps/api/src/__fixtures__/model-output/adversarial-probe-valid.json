@@ -1,0 +1,22 @@
+{
+  "probes": [
+    {
+      "claimId": "claim-1",
+      "adversarialHypothesis": "Multi-model deliberation may not improve reasoning if models share training data biases",
+      "searchQueries": [
+        "multi-model ensemble bias shared training data",
+        "LLM reasoning improvement diminishing returns"
+      ],
+      "reasoning": "If models are trained on similar data, their blind spots may overlap, reducing the benefit of cross-critique."
+    },
+    {
+      "claimId": "claim-2",
+      "adversarialHypothesis": "Local-first architecture may increase costs due to maintenance overhead",
+      "searchQueries": [
+        "local-first architecture hidden costs maintenance",
+        "self-hosted vs cloud total cost of ownership research"
+      ],
+      "reasoning": "Local infrastructure requires ongoing maintenance that cloud services handle automatically."
+    }
+  ]
+}

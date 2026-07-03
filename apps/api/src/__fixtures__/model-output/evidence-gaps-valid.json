@@ -1,0 +1,37 @@
+{
+  "gaps": [
+    {
+      "claimId": "claim-1",
+      "claimText": "Multi-model deliberation improves reasoning quality",
+      "gapType": "no_evidence",
+      "description": "No evidence found for the primary claim about multi-model deliberation",
+      "suggestedSearchQueries": [
+        "ensemble model deliberation reasoning improvement",
+        "multi-agent research quality comparison"
+      ],
+      "priority": "critical"
+    },
+    {
+      "claimId": "claim-3",
+      "claimText": "Evidence auditing improves output quality",
+      "gapType": "weak_evidence",
+      "description": "Only indirect evidence found supporting evidence auditing benefit",
+      "suggestedSearchQueries": [
+        "peer review auditing research quality improvement"
+      ],
+      "priority": "high"
+    },
+    {
+      "claimId": "claim-4",
+      "claimText": "Local-first architecture reduces costs",
+      "gapType": "no_evidence",
+      "description": "No cost comparison data available",
+      "suggestedSearchQueries": [
+        "local inference cost vs cloud API pricing comparison"
+      ],
+      "priority": "medium"
+    }
+  ],
+  "overallEvidenceStrength": "weak",
+  "recommendation": "gather_more"
+}

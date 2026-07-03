@@ -1,0 +1,15 @@
+-- Optional migration: enable semantic retrieval with pgvector.
+-- Run manually when upgrading from JSON-string embeddings:
+--   docker exec -i research_workbench_postgres psql -U research -d research_workbench < infra/postgres/migrations/0002_pgvector_embeddings_optional.sql
+--
+-- Requires: CREATE EXTENSION vector (from 0001_enable_pgvector.sql)
+
+-- ALTER TABLE "SourceEmbedding"
+--   ALTER COLUMN embedding TYPE vector(768)
+--   USING CASE
+--     WHEN embedding IS NULL THEN NULL
+--     ELSE (embedding::vector)
+--   END;
+--
+-- CREATE INDEX IF NOT EXISTS source_embedding_vector_idx
+--   ON "SourceEmbedding" USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);

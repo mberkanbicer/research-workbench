@@ -1,0 +1,1824 @@
+openapi: 3.1.0
+info:
+  title: Evidence-Grounded Research Workbench API
+  version: 0.2.0
+  description: Full MVP API contract for the evidence-grounded multi-model long-horizon research workbench.
+servers:
+  - url: http://localhost:4000
+    description: Local Fastify API
+
+tags:
+  - name: Projects
+  - name: Runs
+  - name: IdeaVersions
+  - name: Claims
+  - name: Evidence
+  - name: Models
+  - name: Tasks
+  - name: Decisions
+  - name: Export
+  - name: Auth
+  - name: Feedback
+  - name: Providers
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Projects]
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      summary: Readiness check
+      tags: [Projects]
+      responses:
+        '200':
+          description: API is ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [status]
+                    properties:
+                      status:
+                        type: string
+                        example: ready
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                name:
+                  type: string
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user: { type: object }
+                      token: { type: string }
+        '409':
+          description: Email already registered
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and get token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user: { type: object }
+                      token: { type: string }
+        '401':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate session token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+        '401':
+          description: Not authenticated
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      email: { type: string }
+                      name: { type: string }
+        '401':
+          description: Not authenticated
+
+  # ── Providers ──────────────────────────────────────────────────────────────
+
+  /providers/status:
+    get:
+      tags: [Providers]
+      summary: Get available model/search provider status
+      responses:
+        '200':
+          description: Provider status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      searchProvider: { type: string }
+                      searchReady: { type: boolean }
+                      modelsAvailable: { type: integer }
+
+  /projects:
+    get:
+      summary: List projects
+      tags: [Projects]
+      responses:
+        '200':
+          description: Project list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+    post:
+      summary: Create project with initial idea version
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Created project and initial idea version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateProjectResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{projectId}:
+    get:
+      summary: Get project dashboard state
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project dashboard state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDashboardResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update project metadata
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete project and all related data
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Project deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/archive:
+    post:
+      summary: Archive project
+      tags: [Projects]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Archived project
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+
+  /projects/{projectId}/runs:
+    post:
+      summary: Start deliberation run
+      tags: [Runs]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartRunRequest'
+      responses:
+        '201':
+          description: Run queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /runs/{runId}:
+    get:
+      summary: Get run status and recent events
+      tags: [Runs]
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Run status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStatusResponse'
+
+  /runs/{runId}/events:
+    get:
+      summary: Server-Sent Events for run progress
+      tags: [Runs]
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /runs/{runId}/events/history:
+    get:
+      summary: Get historical run events
+      tags: [Runs]
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Array of past run events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunEvent'
+
+  /runs/{runId}/cancel:
+    post:
+      summary: Cancel active run
+      tags: [Runs]
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+
+  /runs/{runId}/retry:
+    post:
+      summary: Retry a failed run
+      tags: [Runs]
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Job retried
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                      message:
+                        type: string
+        '404':
+          description: Job not found
+
+  /projects/{projectId}/runs/latest:
+    get:
+      tags: [Runs]
+      summary: Get the latest run for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Latest run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object }
+        '404':
+          description: No runs found
+
+  /runs/{runId}/context-manifests:
+    get:
+      tags: [Runs]
+      summary: List context manifests recorded during a run's project
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Context manifests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContextManifest'
+        '404':
+          description: Run not found
+
+  /runs/{runId}/metrics:
+    get:
+      tags: [Runs]
+      summary: Get self-improving loop metrics (quality reports, iterations)
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      runId: { type: string, format: uuid }
+                      status: { type: string, enum: [running, completed] }
+                      iterations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            iteration: { type: integer }
+                            correctiveActions: { type: integer }
+                            qualityIssues: { type: integer }
+                            isFinal: { type: boolean }
+                      stageQuality:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            avg: { type: number }
+                            count: { type: integer }
+                            failures: { type: integer }
+                      totalQualityReports: { type: integer }
+        '404':
+          description: Run not found or not a self_improving run
+
+  /projects/{projectId}/idea-versions:
+    get:
+      summary: List idea versions
+      tags: [IdeaVersions]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Idea versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaVersionListResponse'
+    post:
+      summary: Create manual idea version
+      tags: [IdeaVersions]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIdeaVersionRequest'
+      responses:
+        '201':
+          description: Created idea version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaVersionResponse'
+
+  /idea-versions/{ideaVersionId}:
+    get:
+      summary: Get idea version with claims and linked critiques
+      tags: [IdeaVersions]
+      parameters:
+        - $ref: '#/components/parameters/IdeaVersionId'
+      responses:
+        '200':
+          description: Idea version detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeaVersionDetailResponse'
+
+  /idea-versions/{ideaVersionId}/extract-claims:
+    post:
+      summary: Extract claims for idea version
+      tags: [Claims]
+      parameters:
+        - $ref: '#/components/parameters/IdeaVersionId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtractClaimsRequest'
+      responses:
+        '201':
+          description: Claims extracted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimListResponse'
+
+  /projects/{projectId}/claims:
+    get:
+      summary: List claims
+      tags: [Claims]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Claims
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimListResponse'
+
+  /claims/{claimId}:
+    get:
+      summary: Get claim by ID
+      tags: [Claims]
+      parameters:
+        - $ref: '#/components/parameters/ClaimId'
+      responses:
+        '200':
+          description: Claim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update claim metadata or status
+      tags: [Claims]
+      parameters:
+        - $ref: '#/components/parameters/ClaimId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClaimRequest'
+      responses:
+        '200':
+          description: Updated claim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+
+  /projects/{projectId}/evidence:
+    get:
+      summary: List evidence
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Evidence list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceListResponse'
+    post:
+      summary: Add manual evidence
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEvidenceRequest'
+      responses:
+        '201':
+          description: Evidence created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceResponse'
+
+  /evidence/{evidenceId}:
+    get:
+      summary: Get evidence by ID
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/EvidenceId'
+      responses:
+        '200':
+          description: Evidence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update evidence fields or status
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/EvidenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEvidenceRequest'
+      responses:
+        '200':
+          description: Evidence updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceResponse'
+
+  /claims/{claimId}/search-evidence:
+    post:
+      summary: Search supporting evidence for claim
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/ClaimId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchEvidenceRequest'
+      responses:
+        '201':
+          description: Evidence search completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceListResponse'
+
+  /claims/{claimId}/search-counter-evidence:
+    post:
+      summary: Search counter-evidence for claim
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/ClaimId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchEvidenceRequest'
+      responses:
+        '201':
+          description: Counter-evidence search completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceListResponse'
+
+  /evidence/{evidenceId}/assess:
+    post:
+      summary: Run evidence assessment by selected models
+      tags: [Evidence]
+      parameters:
+        - $ref: '#/components/parameters/EvidenceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessEvidenceRequest'
+      responses:
+        '201':
+          description: Evidence assessments created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceAssessmentListResponse'
+
+  /projects/{projectId}/evidence/assess-pending:
+    post:
+      tags: [Evidence]
+      summary: Assess all pending evidence for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending evidence assessed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      assessed: { type: integer }
+        '404':
+          description: Project not found
+
+  /projects/{projectId}/evidence/find-counter-evidence:
+    post:
+      tags: [Evidence]
+      summary: Search for counter-evidence for project claims
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Counter-evidence search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      counterEvidenceFound: { type: integer }
+        '404':
+          description: Project not found
+
+  /models:
+    get:
+      summary: List model configs without secrets
+      tags: [Models]
+      responses:
+        '200':
+          description: Models
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+    post:
+      summary: Create model config
+      tags: [Models]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateModelRequest'
+      responses:
+        '201':
+          description: Created model config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+
+  /models/{modelId}:
+    get:
+      summary: Get model config by ID
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      responses:
+        '200':
+          description: Model config (without secrets)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: Update model config
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateModelRequest'
+      responses:
+        '200':
+          description: Updated model config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+    delete:
+      summary: Disable or delete model config
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      responses:
+        '204':
+          description: Deleted or disabled
+
+  /models/{modelId}/test:
+    post:
+      summary: Test model config
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelTestResponse'
+
+  /projects/{projectId}/tasks:
+    get:
+      summary: List research tasks
+      tags: [Tasks]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Research tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchTaskListResponse'
+
+  /tasks/{taskId}:
+    patch:
+      summary: Update research task status or metadata
+      tags: [Tasks]
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateResearchTaskRequest'
+      responses:
+        '200':
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchTaskResponse'
+
+  /tasks/{taskId}/run:
+    post:
+      summary: Run a single research task
+      tags: [Tasks]
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '202':
+          description: Task queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchTaskResponse'
+
+  /projects/{projectId}/decisions:
+    get:
+      summary: List decision records
+      tags: [Decisions]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Decisions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionListResponse'
+    post:
+      summary: Record a manual decision
+      tags: [Decisions]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decisionStatus, decisionText, ideaVersionId]
+              properties:
+                decisionStatus:
+                  type: string
+                  enum: [full_consensus, qualified_consensus, no_consensus, insufficient_evidence, needs_external_validation]
+                decisionText:
+                  type: string
+                ideaVersionId:
+                  type: string
+      responses:
+        '201':
+          description: Decision created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+
+  /decisions/{decisionId}:
+    get:
+      summary: Get decision record
+      tags: [Decisions]
+      parameters:
+        - $ref: '#/components/parameters/DecisionId'
+      responses:
+        '200':
+          description: Decision detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DecisionResponse'
+
+  /projects/{projectId}/export/json:
+    get:
+      summary: Export project as JSON
+      tags: [Export]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: JSON export
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /projects/{projectId}/export/markdown:
+    get:
+      summary: Export project as Markdown
+      tags: [Export]
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Markdown export
+          content:
+            text/markdown:
+              schema:
+                type: string
+
+  # ── Feedback ──────────────────────────────────────────────────────────────
+
+  /feedback:
+    post:
+      tags: [Feedback]
+      summary: Submit feedback for a project or entity
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, targetType, targetId, feedbackType, message]
+              properties:
+                projectId: { type: string, format: uuid }
+                targetType:
+                  type: string
+                  enum: [claim, evidence, critique, decision, run]
+                targetId: { type: string }
+                feedbackType:
+                  type: string
+                  enum: [helpful, incorrect, unclear, needs_work, other]
+                message: { type: string }
+      responses:
+        '201':
+          description: Feedback created
+        '401':
+          description: Not authenticated
+
+  /feedback/{projectId}:
+    get:
+      tags: [Feedback]
+      summary: List feedback for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Feedback list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { type: object }
+        '401':
+          description: Not authenticated
+
+  /feedback/{projectId}/summary:
+    get:
+      tags: [Feedback]
+      summary: Get feedback summary for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Feedback summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      helpful: { type: integer }
+                      incorrect: { type: integer }
+                      unclear: { type: integer }
+                      needsWork: { type: integer }
+        '401':
+          description: Not authenticated
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string }
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema: { type: string }
+    IdeaVersionId:
+      name: ideaVersionId
+      in: path
+      required: true
+      schema: { type: string }
+    ClaimId:
+      name: claimId
+      in: path
+      required: true
+      schema: { type: string }
+    EvidenceId:
+      name: evidenceId
+      in: path
+      required: true
+      schema: { type: string }
+    ModelId:
+      name: modelId
+      in: path
+      required: true
+      schema: { type: string }
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema: { type: string }
+    DecisionId:
+      name: decisionId
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ok]
+          properties:
+            ok: { type: boolean }
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+
+    Project:
+      type: object
+      required: [id, title, goal, status, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        goal: { type: string }
+        currentSynthesis: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [active, paused, completed, archived]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    IdeaVersion:
+      type: object
+      required: [id, projectId, versionNumber, title, description, status, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        versionNumber: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status:
+          type: string
+          enum: [draft, under_review, needs_revision, accepted, accepted_with_reservations, rejected, superseded]
+        changesFromPrevious:
+          type: array
+          items: { type: string }
+          nullable: true
+        createdBecauseOfCritiqueIds:
+          type: array
+          items: { type: string }
+          nullable: true
+        createdAt: { type: string, format: date-time }
+
+    Claim:
+      type: object
+      required: [id, projectId, ideaVersionId, text, type, requiresEvidence, criticality, status, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        ideaVersionId: { type: string }
+        text: { type: string }
+        type:
+          type: string
+          enum: [technical, product, market, business, legal, ux, research, risk, assumption]
+        requiresEvidence: { type: boolean }
+        criticality:
+          type: string
+          enum: [low, medium, high, blocking]
+        status:
+          type: string
+          enum: [unverified, supported, partially_supported, contradicted, unsupported, needs_external_validation]
+        confidence: { type: number, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    Evidence:
+      type: object
+      required: [id, projectId, title, sourceType, reliability, relevance, status, stalenessRisk, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        claimId: { type: string, nullable: true }
+        discoveredByModelId: { type: string, nullable: true }
+        sourceUrl: { type: string, nullable: true }
+        title: { type: string }
+        publisher: { type: string, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        retrievedAt: { type: string, format: date-time }
+        sourceType:
+          type: string
+          enum: [official, academic, government, company, news, benchmark, blog, forum, user_input, unknown]
+        excerpt: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        rawContentRef: { type: string, nullable: true }
+        reliability:
+          type: string
+          enum: [pending, high, medium, low, unusable]
+        relevance:
+          type: string
+          enum: [pending, direct, indirect, weak, irrelevant]
+        status:
+          type: string
+          enum: [pending_review, accepted, accepted_with_caution, rejected, irrelevant, needs_better_source]
+        stalenessRisk:
+          type: string
+          enum: [low, medium, high]
+        createdAt: { type: string, format: date-time }
+
+    EvidenceAssessment:
+      type: object
+      required: [id, evidenceId, reviewerModelId, reliability, relevance, interpretationVerdict, notes, finalVerdict, createdAt]
+      properties:
+        id: { type: string }
+        evidenceId: { type: string }
+        reviewerModelId: { type: string }
+        reliability:
+          type: string
+          enum: [high, medium, low, unusable]
+        relevance:
+          type: string
+          enum: [direct, indirect, weak, irrelevant]
+        interpretationVerdict:
+          type: string
+          enum: [correctly_used, overstated, misinterpreted, out_of_context, insufficient]
+        detectedProblems:
+          type: array
+          items: { type: string }
+          nullable: true
+        notes: { type: string }
+        finalVerdict:
+          type: string
+          enum: [accept, accept_with_caution, reject, irrelevant, needs_better_source]
+        createdAt: { type: string, format: date-time }
+
+    ModelConfig:
+      type: object
+      required: [id, name, provider, model, contextWindow, preferredMaxInputRatio, outputReserveRatio, defaultTemperature, supportsStreaming, supportsJsonMode, isEnabled, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        provider:
+          type: string
+          enum: [mock, openrouter, ollama, openai_compatible]
+        model: { type: string }
+        baseUrl: { type: string, nullable: true }
+        apiKeyRef: { type: string, nullable: true }
+        contextWindow: { type: integer }
+        preferredMaxInputRatio: { type: number }
+        outputReserveRatio: { type: number }
+        defaultTemperature: { type: number }
+        supportsStreaming: { type: boolean }
+        supportsJsonMode: { type: boolean }
+        isEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ResearchTask:
+      type: object
+      required: [id, projectId, title, objective, role, priority, status, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        claimId: { type: string, nullable: true }
+        ideaVersionId: { type: string, nullable: true }
+        title: { type: string }
+        objective: { type: string }
+        role:
+          type: string
+          enum: [researcher, skeptic, source_auditor, inference_auditor, reviewer, critic, synthesizer, decision_auditor]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [todo, running, done, blocked, cancelled, failed]
+        assignedModelId: { type: string, nullable: true }
+        outputIds:
+          type: array
+          items: { type: string }
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    DecisionRecord:
+      type: object
+      required: [id, projectId, ideaVersionId, decisionStatus, decisionText, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        ideaVersionId: { type: string }
+        decisionStatus:
+          type: string
+          enum: [full_consensus, qualified_consensus, no_consensus, insufficient_evidence, needs_external_validation, max_rounds_reached]
+        decisionText: { type: string }
+        whyGood:
+          type: array
+          items: { type: string }
+        whyBad:
+          type: array
+          items: { type: string }
+        knownWeaknesses:
+          type: array
+          items: { type: string }
+        acceptedEvidenceIds:
+          type: array
+          items: { type: string }
+        counterEvidenceIds:
+          type: array
+          items: { type: string }
+        resolvedCritiqueIds:
+          type: array
+          items: { type: string }
+        unresolvedRisks:
+          type: array
+          items: { type: string }
+        modelFinalVotes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelVote'
+        reopenConditions:
+          type: array
+          items: { type: string }
+        nextActions:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ModelVote:
+      type: object
+      required: [modelId, vote, reason]
+      properties:
+        modelId: { type: string }
+        vote:
+          type: string
+          enum: [accept, accept_with_reservations, reject, abstain, needs_more_evidence]
+        reason: { type: string }
+        confidence: { type: number, nullable: true }
+        reservations:
+          type: array
+          items: { type: string }
+
+    Run:
+      type: object
+      required: [id, projectId, status, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+        currentRound: { type: integer, nullable: true }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+
+    RunEvent:
+      type: object
+      required: [id, runId, projectId, type, createdAt]
+      properties:
+        id: { type: string }
+        runId: { type: string }
+        projectId: { type: string }
+        type:
+          type: string
+          enum: [run.started, round.started, task.created, task.started, task.completed, model.call.started, model.call.completed, evidence.added, evidence.assessed, critique.created, critique.responded, idea.revised, consensus.checked, decision.created, run.completed, run.failed, run.cancelled]
+        payload:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt: { type: string, format: date-time }
+
+    CreateProjectRequest:
+      type: object
+      required: [title, goal, initialIdea]
+      properties:
+        title: { type: string, minLength: 1 }
+        goal: { type: string, minLength: 1 }
+        initialIdea: { type: string, minLength: 1 }
+
+    UpdateProjectRequest:
+      type: object
+      properties:
+        title: { type: string }
+        goal: { type: string }
+        currentSynthesis: { type: string }
+        status:
+          type: string
+          enum: [active, paused, completed, archived]
+
+    StartRunRequest:
+      type: object
+      required: [modelIds]
+      properties:
+        modelIds:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+        maxRounds:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+        loopMode:
+          type: string
+          enum: [standard, self_improving]
+          default: standard
+          description: standard runs the fixed pipeline; self_improving enables meta-prompt fixes and corrective actions
+        searchProvider:
+          type: string
+          enum: [mock, searxng, serpapi, web, manual]
+          description: Optional per-run search provider override
+        mode:
+          type: string
+          enum: [real, manual, mixed]
+          deprecated: true
+          description: Legacy field; use loopMode instead
+
+    CreateIdeaVersionRequest:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        changesFromPrevious:
+          type: array
+          items: { type: string }
+        createdBecauseOfCritiqueIds:
+          type: array
+          items: { type: string }
+
+    ExtractClaimsRequest:
+      type: object
+      properties:
+        modelId: { type: string, nullable: true }
+        force: { type: boolean, default: false }
+
+    UpdateClaimRequest:
+      type: object
+      properties:
+        text: { type: string }
+        type:
+          type: string
+          enum: [technical, product, market, business, legal, ux, research, risk, assumption]
+        requiresEvidence: { type: boolean }
+        criticality:
+          type: string
+          enum: [low, medium, high, blocking]
+        status:
+          type: string
+          enum: [unverified, supported, partially_supported, contradicted, unsupported, needs_external_validation]
+        confidence: { type: number }
+
+    CreateEvidenceRequest:
+      type: object
+      required: [title, sourceType]
+      properties:
+        claimId: { type: string, nullable: true }
+        sourceUrl: { type: string, nullable: true }
+        title: { type: string }
+        publisher: { type: string, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        sourceType:
+          type: string
+          enum: [official, academic, government, company, news, benchmark, blog, forum, user_input, unknown]
+        excerpt: { type: string, nullable: true }
+        summary: { type: string, nullable: true }
+        stalenessRisk:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+
+    UpdateEvidenceRequest:
+      type: object
+      properties:
+        claimId: { type: string, nullable: true }
+        title: { type: string }
+        excerpt: { type: string }
+        summary: { type: string }
+        reliability:
+          type: string
+          enum: [pending, high, medium, low, unusable]
+        relevance:
+          type: string
+          enum: [pending, direct, indirect, weak, irrelevant]
+        status:
+          type: string
+          enum: [pending_review, accepted, accepted_with_caution, rejected, irrelevant, needs_better_source]
+        stalenessRisk:
+          type: string
+          enum: [low, medium, high]
+
+    SearchEvidenceRequest:
+      type: object
+      properties:
+        query: { type: string, nullable: true }
+        provider:
+          type: string
+          enum: [manual, web, searxng]
+          default: web
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+
+    AssessEvidenceRequest:
+      type: object
+      required: [modelIds]
+      properties:
+        modelIds:
+          type: array
+          minItems: 1
+          items: { type: string }
+
+    CreateModelRequest:
+      type: object
+      required: [name, provider, model, contextWindow]
+      properties:
+        name: { type: string }
+        provider:
+          type: string
+          enum: [mock, openrouter, ollama, openai_compatible]
+        model: { type: string }
+        baseUrl: { type: string, nullable: true }
+        apiKeyRef: { type: string, nullable: true }
+        contextWindow: { type: integer, minimum: 1000 }
+        preferredMaxInputRatio: { type: number, default: 0.5 }
+        outputReserveRatio: { type: number, default: 0.2 }
+        defaultTemperature: { type: number, default: 0.2 }
+        supportsStreaming: { type: boolean, default: false }
+        supportsJsonMode: { type: boolean, default: false }
+        isEnabled: { type: boolean, default: true }
+
+    UpdateModelRequest:
+      type: object
+      properties:
+        name: { type: string }
+        baseUrl: { type: string, nullable: true }
+        apiKeyRef: { type: string, nullable: true }
+        contextWindow: { type: integer }
+        preferredMaxInputRatio: { type: number }
+        outputReserveRatio: { type: number }
+        defaultTemperature: { type: number }
+        supportsStreaming: { type: boolean }
+        supportsJsonMode: { type: boolean }
+        isEnabled: { type: boolean }
+
+    UpdateResearchTaskRequest:
+      type: object
+      properties:
+        title: { type: string }
+        objective: { type: string }
+        role:
+          type: string
+          enum: [researcher, skeptic, source_auditor, inference_auditor, reviewer, critic, synthesizer, decision_auditor]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [todo, running, done, blocked, cancelled, failed]
+        assignedModelId: { type: string, nullable: true }
+
+    ProjectResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Project'
+
+    ProjectListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+
+    CreateProjectResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [project, ideaVersion]
+          properties:
+            project:
+              $ref: '#/components/schemas/Project'
+            ideaVersion:
+              $ref: '#/components/schemas/IdeaVersion'
+
+    ProjectDashboardResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            project:
+              $ref: '#/components/schemas/Project'
+            currentIdeaVersion:
+              $ref: '#/components/schemas/IdeaVersion'
+            latestDecision:
+              $ref: '#/components/schemas/DecisionRecord'
+              nullable: true
+            claimCounts:
+              type: object
+              additionalProperties: { type: integer }
+            evidenceCounts:
+              type: object
+              additionalProperties: { type: integer }
+            openCriticalIssues:
+              type: array
+              items: { type: object, additionalProperties: true }
+            activeTasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResearchTask'
+            nextBestAction: { type: string, nullable: true }
+
+    IdeaVersionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/IdeaVersion'
+
+    IdeaVersionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdeaVersion'
+
+    IdeaVersionDetailResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            ideaVersion:
+              $ref: '#/components/schemas/IdeaVersion'
+            claims:
+              type: array
+              items:
+                $ref: '#/components/schemas/Claim'
+            critiques:
+              type: array
+              items: { type: object, additionalProperties: true }
+
+    ClaimResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Claim'
+
+    ClaimListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Claim'
+
+    EvidenceResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Evidence'
+
+    EvidenceListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+
+    EvidenceAssessmentListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceAssessment'
+
+    ModelResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ModelConfig'
+
+    ModelListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelConfig'
+
+    ModelTestResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [ok]
+          properties:
+            ok: { type: boolean }
+            text: { type: string, nullable: true }
+            usage:
+              type: object
+              additionalProperties: true
+              nullable: true
+
+    RunResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Run'
+
+    RunStatusResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          properties:
+            run:
+              $ref: '#/components/schemas/Run'
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/RunEvent'
+
+    ResearchTaskResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/ResearchTask'
+
+    ResearchTaskListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResearchTask'
+
+    DecisionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/DecisionRecord'
+
+    DecisionListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DecisionRecord'

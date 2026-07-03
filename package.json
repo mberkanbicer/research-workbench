@@ -1,0 +1,29 @@
+{
+  "name": "research-workbench-monorepo",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "NODE_ENV=production pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm -C apps/api db:generate",
+    "db:migrate": "pnpm -C apps/api db:migrate",
+    "test:e2e": "pnpm -C e2e test",
+    "lint": "pnpm typecheck",
+    "lint:fix": "prettier --write '**/*.{ts,tsx,json,yaml,yml,md}' '!**/node_modules' '!**/.next' '!**/dist'"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0"
+  }
+}

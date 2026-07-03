@@ -1,0 +1,52 @@
+# ── API Dockerfile (multi-stage) ────────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy workspace definition and lockfile
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+
+# Copy all package.json files for dependency resolution
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/model-gateway/package.json ./packages/model-gateway/
+COPY apps/api/package.json ./apps/api/
+
+# Install ALL dependencies (including workspace deps)
+RUN pnpm install --frozen-lockfile 2>&1 | tail -5
+
+# Copy full source code
+COPY packages/shared/ ./packages/shared/
+COPY packages/model-gateway/ ./packages/model-gateway/
+COPY apps/api/ ./apps/api/
+
+# Generate Prisma client (use pinned local version)
+RUN pnpm -C apps/api db:generate
+
+# Build packages first, then API
+RUN pnpm -C packages/shared build 2>&1 | tail -3
+RUN pnpm -C packages/model-gateway build 2>&1 | tail -3
+RUN pnpm -C apps/api build 2>&1 | tail -5
+
+# ── Stage 2: Runtime
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy production artifacts
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+
+# Install only production dependencies, and the workspace packages as tarballs
+RUN pnpm install --prod --frozen-lockfile 2>&1 | tail -3
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
+
+CMD ["node", "apps/api/dist/server.js"]

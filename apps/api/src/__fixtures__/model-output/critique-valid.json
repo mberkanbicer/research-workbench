@@ -1,0 +1,32 @@
+{
+  "critiques": [
+    {
+      "targetType": "claim",
+      "targetId": "claim-1",
+      "critiqueType": "weak_evidence",
+      "severity": "high",
+      "text": "The claim that multi-model deliberation improves reasoning quality lacks empirical evidence in the research context.",
+      "whyItMatters": "Without strong evidence, the core value proposition of the system is unsubstantiated.",
+      "proposedFix": "Add citations to ensemble method studies in relevant domains",
+      "evidenceIds": []
+    },
+    {
+      "targetType": "evidence",
+      "targetId": "ev-1",
+      "critiqueType": "misinterpreted_evidence",
+      "severity": "medium",
+      "text": "The cited evidence appears to be from a different domain and may not generalize.",
+      "whyItMatters": "Domain mismatch can lead to incorrect conclusions about system effectiveness.",
+      "evidenceIds": ["ev-1"]
+    },
+    {
+      "targetType": "idea",
+      "targetId": "version-1",
+      "critiqueType": "scope_error",
+      "severity": "low",
+      "text": "The research scope should be narrowed to focus on academic research validation.",
+      "whyItMatters": "A narrower scope would make validation more tractable in early iterations.",
+      "evidenceIds": []
+    }
+  ]
+}

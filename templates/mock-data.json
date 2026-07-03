@@ -1,0 +1,72 @@
+{
+  "models": [
+    {
+      "name": "Mock Researcher",
+      "provider": "mock",
+      "model": "mock-researcher",
+      "contextWindow": 32000,
+      "preferredMaxInputRatio": 0.5,
+      "outputReserveRatio": 0.2,
+      "defaultTemperature": 0.2,
+      "supportsStreaming": false,
+      "supportsJsonMode": true,
+      "isEnabled": true
+    },
+    {
+      "name": "Mock Skeptic",
+      "provider": "mock",
+      "model": "mock-skeptic",
+      "contextWindow": 32000,
+      "preferredMaxInputRatio": 0.5,
+      "outputReserveRatio": 0.2,
+      "defaultTemperature": 0.2,
+      "supportsStreaming": false,
+      "supportsJsonMode": true,
+      "isEnabled": true
+    },
+    {
+      "name": "Mock Auditor",
+      "provider": "mock",
+      "model": "mock-auditor",
+      "contextWindow": 32000,
+      "preferredMaxInputRatio": 0.5,
+      "outputReserveRatio": 0.2,
+      "defaultTemperature": 0.2,
+      "supportsStreaming": false,
+      "supportsJsonMode": true,
+      "isEnabled": true
+    }
+  ],
+  "demoProject": {
+    "title": "Evidence-grounded multi-model research workbench",
+    "goal": "Validate whether a web-based, multi-model, evidence-grounded deliberation system is useful and technically feasible for long-horizon research.",
+    "initialIdea": "A local-first web UI where multiple AI models collaboratively research, critique, revise, and finalize ideas using evidence, counter-evidence, source auditing, context manifests, and iterative consensus loops."
+  },
+  "frontend": {
+    "stateManagement": "Zustand",
+    "serverState": "TanStack Query"
+  },
+  "mockSearch": {
+    "adapterName": "MockSearchAdapter",
+    "fixturePath": "templates/mock-search-results.json",
+    "behavior": "Deterministic substring matching against the query field; return fallbackResults only when no match is found."
+  },
+  "seedEvidence": [
+    {
+      "claimHint": "multi-model deliberation improves idea quality",
+      "title": "Multi-agent debate can improve reasoning under constrained conditions",
+      "sourceUrl": "https://example.test/research/multi-agent-debate-reasoning",
+      "sourceType": "academic",
+      "status": "pending_review",
+      "stalenessRisk": "medium"
+    },
+    {
+      "claimHint": "model consensus can be treated as correctness",
+      "title": "False consensus risks in LLM-as-judge workflows",
+      "sourceUrl": "https://example.test/research/llm-false-consensus-risk",
+      "sourceType": "academic",
+      "status": "pending_review",
+      "stalenessRisk": "medium"
+    }
+  ]
+}

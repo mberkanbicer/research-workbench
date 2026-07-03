@@ -1,0 +1,22 @@
+{
+  "claims": [
+    {
+      "type": "research",
+      "requiresEvidence": true,
+      "criticality": "high"
+    },
+    {
+      "text": "",
+      "type": null,
+      "requiresEvidence": "yes",
+      "criticality": "invalid_level"
+    },
+    {
+      "text": "Valid claim with partial neighbors",
+      "type": "technical",
+      "requiresEvidence": false
+    }
+  ],
+  "hypotheses": null,
+  "openQuestions": "not an array"
+}

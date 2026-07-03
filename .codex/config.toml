@@ -1,0 +1,45 @@
+# Codex project configuration and operating rules.
+# This file is intentionally human-readable and should be treated as repository-level guidance.
+# Do not place secrets in this file.
+
+project_name = "evidence-grounded-research-workbench"
+primary_goal = "Build a local-first full-stack web application for evidence-grounded multi-model long-horizon research and deliberation."
+
+[implementation]
+package_manager = "pnpm"
+node_version = "20.x"
+frontend = "Next.js App Router + React + TypeScript + TailwindCSS + TanStack Query + Zustand"
+backend = "Fastify + TypeScript + Zod + Prisma"
+database = "PostgreSQL 16 with pgvector extension"
+queue = "Redis + BullMQ"
+event_streaming = "Server-Sent Events"
+
+[behavior]
+work_mode = "milestone-by-milestone"
+read_docs_first = true
+require_plan_before_coding = true
+keep_repo_runnable_after_each_milestone = true
+prefer_mock_adapters_when_api_keys_missing = true
+do_not_expand_scope_without_instruction = true
+
+[hard_requirements]
+raw_events_are_immutable = true
+model_outputs_require_zod_validation = true
+accepted_claims_require_evidence_ids = true
+decisions_require_traceability = true
+frontend_must_not_store_api_keys = true
+manual_evidence_must_work_without_search_api = true
+mock_search_must_be_deterministic = true
+
+[forbidden_for_mvp]
+authentication = false
+pdf_ingestion = false
+graph_visualization = false
+scheduled_background_research = false
+multi_user_collaboration = false
+browser_extension_automation = false
+
+[quality_gates]
+run_typecheck_after_changes = true
+run_tests_when_available = true
+update_docs_when_contracts_change = true

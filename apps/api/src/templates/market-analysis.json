@@ -1,0 +1,12 @@
+{
+  "id": "market-analysis",
+  "name": "Market Analysis",
+  "description": "Evaluate market opportunity, competition, and demand",
+  "goalTemplate": "Analyze the market for {topic} including size, growth, competition, and customer segments.",
+  "initialClaims": [
+    { "text": "The addressable market for {topic} is growing", "type": "market", "criticality": "high" },
+    { "text": "There is unmet demand in this market", "type": "market", "criticality": "high" },
+    { "text": "The competitive landscape is favorable for new entrants", "type": "business", "criticality": "medium" }
+  ],
+  "searchQueries": ["{topic} market size", "{topic} market growth", "{topic} competitors"]
+}

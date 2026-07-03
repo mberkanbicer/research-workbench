@@ -1,0 +1,3 @@
+-- Required for semantic memory / embedding search.
+-- The Docker image pgvector/pgvector:pg16 already includes the extension binaries.
+CREATE EXTENSION IF NOT EXISTS vector;

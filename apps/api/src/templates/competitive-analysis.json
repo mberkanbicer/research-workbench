@@ -1,0 +1,12 @@
+{
+  "id": "competitive-analysis",
+  "name": "Competitive Analysis",
+  "description": "Analyze competitors, their strengths, weaknesses, and market position",
+  "goalTemplate": "Analyze the competitive landscape for {topic} including key players, their strategies, and competitive advantages.",
+  "initialClaims": [
+    { "text": "The market has established competitors with significant market share", "type": "market", "criticality": "high" },
+    { "text": "There are clear differentiation opportunities", "type": "business", "criticality": "high" },
+    { "text": "Existing competitors have identifiable weaknesses", "type": "business", "criticality": "medium" }
+  ],
+  "searchQueries": ["{topic} competitors analysis", "{topic} market leaders", "{topic} competitive advantages"]
+}

@@ -1,0 +1,72 @@
+# Nightly live integration tests (SearXNG, optional real providers).
+name: CI Live
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  live-tests:
+    name: Live Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: research
+          POSTGRES_PASSWORD: research
+          POSTGRES_DB: research_workbench
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6380:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm -C apps/api db:generate
+        env:
+          DATABASE_URL: postgresql://research:research@localhost:5433/research_workbench?schema=public
+
+      - name: Run Prisma migrations
+        run: pnpm -C apps/api db:migrate
+        env:
+          DATABASE_URL: postgresql://research:research@localhost:5433/research_workbench?schema=public
+
+      - name: Run live tests
+        run: pnpm -C apps/api test
+        env:
+          DATABASE_URL: postgresql://research:research@localhost:5433/research_workbench?schema=public
+          REDIS_URL: redis://localhost:6380
+          SEARCH_PROVIDER: mock
+          RUN_LIVE_TESTS: '1'
+          SEARXNG_BASE_URL: ${{ secrets.SEARXNG_BASE_URL || 'https://search.bicers.me' }}

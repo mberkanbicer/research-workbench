@@ -1,0 +1,25 @@
+{
+  "goalAchieved": true,
+  "achievementLevel": "mostly",
+  "addressedAspects": [
+    "Claim extraction from research goals",
+    "Multi-model independent review",
+    "Cross-critique between models",
+    "Evidence discovery and assessment"
+  ],
+  "missingAspects": [
+    "Cost analysis of multi-model deployment",
+    "Long-term research context preservation"
+  ],
+  "evidenceOfAchievement": [
+    "Claims were extracted and persisted in DB",
+    "Three models completed independent reviews",
+    "Consensus evaluation reached accept_with_reservations"
+  ],
+  "remainingGaps": [
+    "Evidence quality floor not met (0/5 claims have accepted evidence)",
+    "Scalability under concurrent load not tested"
+  ],
+  "confidence": 0.8,
+  "reason": "Goal mostly achieved with some gaps"
+}

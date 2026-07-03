@@ -1,0 +1,56 @@
+{
+  "claims": [
+    {
+      "text": "Multi-model deliberation improves reasoning quality by reducing individual model blind spots.",
+      "type": "research",
+      "requiresEvidence": true,
+      "criticality": "high",
+      "reason": "Studies show ensemble methods outperform single models in reasoning tasks"
+    },
+    {
+      "text": "The system can handle up to 10 concurrent research runs without performance degradation.",
+      "type": "technical",
+      "requiresEvidence": true,
+      "criticality": "high",
+      "reason": "Load testing showed linear scaling up to 10 concurrent runs"
+    },
+    {
+      "text": "Evidence auditing can improve the quality of research outputs.",
+      "type": "research",
+      "requiresEvidence": true,
+      "criticality": "medium",
+      "reason": "Peer review literature supports auditing for quality improvement"
+    },
+    {
+      "text": "Local-first architecture reduces operational costs for individual researchers.",
+      "type": "technical",
+      "requiresEvidence": true,
+      "criticality": "medium",
+      "reason": "No cloud egress or compute costs for local inference"
+    },
+    {
+      "text": "The API should use WebSocket for real-time event streaming.",
+      "type": "design",
+      "requiresEvidence": false,
+      "criticality": "low",
+      "reason": "User feedback indicated polling was suboptimal"
+    }
+  ],
+  "hypotheses": [
+    {
+      "statement": "Ensemble deliberation produces more reliable decisions than single-model review",
+      "whyItMatters": "Determines whether multi-model architecture is justified",
+      "requiredEvidenceType": "comparative study"
+    },
+    {
+      "statement": "Automated evidence auditing reduces human reviewer workload by 60%",
+      "whyItMatters": "Validates the evidence pipeline investment",
+      "requiredEvidenceType": "user study"
+    }
+  ],
+  "openQuestions": [
+    "How does the system handle conflicting evidence sources?",
+    "What is the optimal number of models for cost-benefit trade-off?",
+    "Can the system be extended to support domain-specific models?"
+  ]
+}

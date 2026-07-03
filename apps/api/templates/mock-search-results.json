@@ -1,0 +1,140 @@
+{
+  "queries": [
+    {
+      "match": "multi model deliberation debate reasoning",
+      "results": [
+        {
+          "title": "Multi-agent debate can improve reasoning under constrained conditions",
+          "url": "https://example.test/research/multi-agent-debate-reasoning",
+          "snippet": "A deterministic fixture describing evidence that model debate may improve reasoning on selected tasks, while warning about task dependence.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2025-02-10T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "The study reports improvements in selected reasoning tasks when independent agents critique each other, but the effect is not universal."
+        },
+        {
+          "title": "False consensus risks in LLM-as-judge workflows",
+          "url": "https://example.test/research/llm-false-consensus-risk",
+          "snippet": "A deterministic counter-evidence fixture about models agreeing without independently verifying claims.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2025-07-18T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "The paper argues that agreement among models is not equivalent to correctness and can amplify shared biases."
+        }
+      ]
+    },
+    {
+      "match": "context window long context degradation lost in the middle",
+      "results": [
+        {
+          "title": "Long-context retrieval can degrade when relevant facts appear mid-context",
+          "url": "https://example.test/research/long-context-lost-middle",
+          "snippet": "A fixture representing research on long-context fragility and retrieval position sensitivity.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2024-11-03T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "The report finds that large context windows do not guarantee reliable use of all included information."
+        }
+      ]
+    },
+    {
+      "match": "openrouter ollama local first model provider architecture",
+      "results": [
+        {
+          "title": "Provider-agnostic AI architecture with local and remote models",
+          "url": "https://example.test/engineering/provider-agnostic-ai-architecture",
+          "snippet": "A fixture explaining the benefits and limits of local-first plus provider-optional model orchestration.",
+          "publisher": "Example Engineering Fixture",
+          "publishedAt": "2026-01-12T00:00:00.000Z",
+          "sourceType": "company",
+          "excerpt": "Local-first model routing reduces dependency and cost for simple tasks, while remote models remain useful for high-reasoning synthesis."
+        }
+      ]
+    },
+    {
+      "match": "system can improve idea development quality",
+      "results": [
+        {
+          "title": "Structured deliberation improves AI-assisted idea development",
+          "url": "https://example.test/research/idea-development-deliberation",
+          "snippet": "A fixture demonstrating how systematic multi-model deliberation raises the quality of research ideas by enforcing evidence anchors.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2025-09-15T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "Teams using structured multi-agent deliberation produced ideas with higher novelty scores and fewer unsupported assertions."
+        }
+      ]
+    },
+    {
+      "match": "multi-model critique can reveal weaknesses missed",
+      "results": [
+        {
+          "title": "Cross-model critique surfaces blind spots in single-reviewer workflows",
+          "url": "https://example.test/research/cross-model-critique-blind-spots",
+          "snippet": "A fixture showing that critique from diverse models catches weaknesses that individual reviewers consistently miss.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2025-11-02T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "Independent cross-critique sessions identified an average of 2.3 additional weaknesses per proposal compared to single-review baselines."
+        }
+      ]
+    },
+    {
+      "match": "evidence auditing can reduce unsupported claims",
+      "results": [
+        {
+          "title": "Evidence audits reduce unsupported factual claims by 40% in LLM outputs",
+          "url": "https://example.test/research/evidence-audit-llm-claims",
+          "snippet": "A fixture demonstrating how systematic evidence audits catch unsupported claims before they enter final recommendations.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2025-08-20T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "Applying a structured evidence audit reduced unsupported claims from 62% to 22% in generative research summaries."
+        }
+      ]
+    },
+    {
+      "match": "long-horizon memory can preserve research context",
+      "results": [
+        {
+          "title": "Long-horizon context preservation improves research continuity across sessions",
+          "url": "https://example.test/research/long-horizon-context-research",
+          "snippet": "A fixture showing that long-horizon memory mechanisms maintain research context and reduce re-explanation overhead.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2025-12-05T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "Systems with structured long-horizon context reduced information loss by 65% across multi-session research tasks."
+        }
+      ]
+    },
+    {
+      "match": "local-first architecture can reduce cost and increase user control",
+      "results": [
+        {
+          "title": "Cost and control trade-offs in local-first versus cloud-only model architectures",
+          "url": "https://example.test/research/local-first-cost-control",
+          "snippet": "A fixture analyzing the cost and control benefits of local-first deployment for research workloads.",
+          "publisher": "Example Research Fixture",
+          "publishedAt": "2026-02-14T00:00:00.000Z",
+          "sourceType": "academic",
+          "excerpt": "Local-first architectures reduced per-task inference cost by 70% while improving data sovereignty, at the cost of increased setup complexity."
+        }
+      ]
+    },
+    {
+      "match": "evidence floor consensus block",
+      "results": []
+    }
+  ],
+  "fallbackResults": [
+    {
+      "title": "Generic fixture source for unsupported mock search query",
+      "url": "https://example.test/mock/generic-source",
+      "snippet": "Fallback deterministic mock search result. Use this only for development tests and mark evidence as accepted_with_caution at most.",
+      "publisher": "Example Fixture",
+      "publishedAt": "2026-01-01T00:00:00.000Z",
+      "sourceType": "unknown",
+      "excerpt": "This fallback exists only to keep the MVP pipeline runnable without a real search API."
+    }
+  ]
+}
