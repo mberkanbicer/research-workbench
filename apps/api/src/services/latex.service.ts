@@ -420,7 +420,7 @@ startxref
     const authorMatch = content.match(/\\author\{([^}]+)\}/);
     const abstractMatch = content.match(/\\begin\{abstract\}([\s\S]*?)\\end\{abstract\}/);
 
-    const sections = [];
+    const sections: string[] = [];
     const sectionRegex = /\\(?:section|subsection|subsubsection)\{([^}]+)\}/g;
     let match;
     while ((match = sectionRegex.exec(content)) !== null) {

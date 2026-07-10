@@ -673,7 +673,7 @@ export async function runRoutes(fastify: FastifyInstance) {
       const projectUserId = project?.userId;
 
       // Find model: prefer assigned model, then project's first enabled model for this user
-      let model = null;
+      let model: any = null;
       if (task.assignedModelId) {
         model = await prisma.modelConfig.findFirst({
           where: { id: task.assignedModelId, isEnabled: true, userId: projectUserId || undefined },

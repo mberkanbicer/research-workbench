@@ -251,7 +251,7 @@ export async function claimRoutes(fastify: FastifyInstance) {
     }
 
     // Deduplicate and save
-    const saved = [];
+    const saved: any[] = [];
     for (const dep of dependencies) {
       try {
         const existing = await prisma.claimDependency.findUnique({

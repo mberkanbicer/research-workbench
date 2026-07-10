@@ -146,8 +146,8 @@ export async function referencesRoutes(fastify: FastifyInstance) {
     }
 
     // Import references
-    const imported = [];
-    const skipped = [];
+    const imported: any[] = [];
+    const skipped: string[] = [];
 
     for (const ref of importedRefs) {
       // Check for duplicate
