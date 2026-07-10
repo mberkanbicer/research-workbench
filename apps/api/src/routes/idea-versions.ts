@@ -99,6 +99,12 @@ export async function ideaVersionRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Version not found' } });
     }
 
+    // Verify user owns both versions' project
+    if (!(await requireProjectAccess(prisma, reply, version1.projectId, request.user?.id))) return;
+    if (version1.projectId !== version2.projectId) {
+      return reply.status(400).send({ error: { code: 'INVALID', message: 'Versions must belong to the same project' } });
+    }
+
     // Fetch claims for both versions
     const [claims1, claims2] = await Promise.all([
       prisma.claim.findMany({ where: { ideaVersionId: v1 } }),

@@ -179,7 +179,7 @@ export class EvidenceStage {
       await prisma.claim.update({ where: { id: claim.id }, data: { status } });
 
       for (const e of evidenceList) {
-        await knowledgeGraph.linkEvidenceToClaim(e.id, claim.id, e.isCounter);
+        await knowledgeGraph.linkEvidenceToClaim(projectId, e.id, claim.id, e.isCounter);
       }
     }
   }

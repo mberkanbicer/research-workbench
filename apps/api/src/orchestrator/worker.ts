@@ -42,15 +42,12 @@ logger.info('BullMQ Worker started', { pid: process.pid });
 
 deliberationWorker.on('ready', () => {
   logger.info('Worker ready to process jobs');
-  console.log('[Worker] Ready to process jobs');
 });
 
 deliberationWorker.on('completed', job => {
   logger.info('Job completed', { jobId: job.id });
-  console.log('[Worker] Job completed:', job.id);
 });
 
 deliberationWorker.on('failed', (job, err) => {
   logger.error('Job failed', { jobId: job?.id, error: err.message });
-  console.error('[Worker] Job failed:', job?.id, err.message);
 });

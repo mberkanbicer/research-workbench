@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { ModelProviderAdapter, ModelCallParams, ModelResponse } from './types.js';
+import { logger } from './logger.js';
 
 // Prisma instance for recording model calls.
 // Set via ModelGateway.setPrisma() — avoids fragile dynamic imports.
@@ -33,7 +34,7 @@ export class ModelGateway {
         lastError = err instanceof Error ? err : new Error(String(err));
         if (i < retries) {
           const delay = Math.pow(2, i) * 1000;
-          console.warn(`Model call attempt ${i + 1} failed: ${lastError?.message}. Retrying in ${delay}ms...`);
+          logger.warn('Model call failed, retrying', { attempt: i + 1, error: lastError?.message, delayMs: delay });
           await sleep(delay);
         }
       }
@@ -55,14 +56,20 @@ export class ModelGateway {
       const db = getPrisma();
       if (!db) return;
 
+      // Redact sensitive data from messages and response before storage
+      const { redactMessages, redactSensitive } = await import('./redact.js').catch(() => ({
+        redactMessages: (m: unknown[]) => m,
+        redactSensitive: (s: string) => s,
+      }));
+
       await db.modelCall.create({
         data: {
           projectId: meta.projectId,
           modelConfigId: meta.modelConfigId,
           provider: this.providerLabel,
           model: this.modelLabel || meta.modelConfigId,
-          messages: params.messages as any,
-          responseText: response?.content || null,
+          messages: redactMessages(params.messages) as any,
+          responseText: response?.content ? redactSensitive(response.content) : null,
           responseJson: null,
           usage: response?.usage || undefined,
           status,
@@ -70,7 +77,7 @@ export class ModelGateway {
         },
       });
     } catch (err) {
-      console.warn('Failed to record model call (non-fatal):', (err as Error).message);
+      logger.warn('Failed to record model call', { error: (err as Error).message });
     }
   }
 
@@ -131,7 +138,7 @@ export class ModelGateway {
             }
           }
           const delay = Math.pow(2, i) * 1000;
-          console.warn(`JSON call attempt ${i + 1} failed: ${lastError?.message}. Retrying in ${delay}ms...`);
+          logger.warn('JSON call failed, retrying', { attempt: i + 1, error: lastError?.message, delayMs: delay });
           await sleep(delay);
         }
       }

@@ -48,7 +48,12 @@ export interface ProjectDashboard {
 export interface LatestRunSummary {
   runId: string;
   status: 'running' | 'completed';
-  events?: RunEvent[];
+  events?: Array<{
+    id?: string;
+    type: string;
+    payload?: any;
+    createdAt?: string;
+  }>;
 }
 
 export interface CreateProjectInput {
@@ -109,6 +114,70 @@ export interface ResearchTask {
   status: string;
   role?: string;
   priority?: string;
+}
+
+export interface RunComparisonData {
+  run1: {
+    config?: Record<string, unknown>;
+    metrics: {
+      durationMs: number;
+      iterationCount: number;
+      completedPhases: number;
+      failedPhases: number;
+      stagesCompleted: number;
+    };
+    claims: {
+      total: number;
+      supported: number;
+      contradicted: number;
+      unverified: number;
+    };
+    evidence: {
+      total: number;
+      accepted: number;
+      rejected: number;
+      counter: number;
+    };
+    decision: {
+      vote?: string;
+      decisionStatus?: string;
+    };
+  };
+  run2: {
+    config?: Record<string, unknown>;
+    metrics: {
+      durationMs: number;
+      iterationCount: number;
+      completedPhases: number;
+      failedPhases: number;
+      stagesCompleted: number;
+    };
+    claims: {
+      total: number;
+      supported: number;
+      contradicted: number;
+      unverified: number;
+    };
+    evidence: {
+      total: number;
+      accepted: number;
+      rejected: number;
+      counter: number;
+    };
+    decision: {
+      vote?: string;
+      decisionStatus?: string;
+    };
+  };
+}
+
+export interface PortfolioProjectStats {
+  id: string;
+  stats: {
+    totalClaims: number;
+    totalEvidence: number;
+    healthScore: number;
+  };
 }
 
 export type {

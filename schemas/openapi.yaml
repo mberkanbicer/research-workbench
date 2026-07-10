@@ -20,6 +20,15 @@ tags:
   - name: Auth
   - name: Feedback
   - name: Providers
+  - name: Annotations
+  - name: EvaluationCriteria
+  - name: Realtime
+  - name: Graphs
+  - name: LiteratureReviews
+  - name: Prompts
+  - name: Templates
+  - name: Settings
+  - name: ApiKeys
 
 paths:
   /health:
@@ -32,7 +41,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
 
   /ready:
     get:
@@ -45,15 +58,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [data]
                 properties:
-                  data:
-                    type: object
-                    required: [status]
-                    properties:
-                      status:
-                        type: string
-                        example: ready
+                  status:
+                    type: string
+                    example: ready
 
   # ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -901,8 +909,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/TaskId'
       responses:
-        '202':
-          description: Task queued
+        '200':
+          description: Task executed
           content:
             application/json:
               schema:
@@ -1077,6 +1085,1781 @@ paths:
                       needsWork: { type: integer }
         '401':
           description: Not authenticated
+
+  # ── Annotations ────────────────────────────────────────────────────────────
+
+  /projects/{projectId}/annotations:
+    get:
+      tags: [Annotations]
+      summary: List annotations for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: entityType
+          in: query
+          required: false
+          schema: { type: string }
+        - name: entityId
+          in: query
+          required: false
+          schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+          description: Full-text search query
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Annotation list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnotationListResponse'
+    post:
+      tags: [Annotations]
+      summary: Create an annotation
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entityType, entityId, content]
+              properties:
+                entityType: { type: string }
+                entityId: { type: string }
+                content: { type: string }
+      responses:
+        '201':
+          description: Annotation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnotationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{projectId}/annotations/{id}:
+    put:
+      tags: [Annotations]
+      summary: Update an annotation
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+      responses:
+        '200':
+          description: Annotation updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnotationResponse'
+    delete:
+      tags: [Annotations]
+      summary: Delete an annotation
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Annotation deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+
+  /projects/{projectId}/annotations/search:
+    get:
+      tags: [Annotations]
+      summary: Full-text search annotations
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 20 }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnotationListResponse'
+
+  # ── Evaluation Criteria ───────────────────────────────────────────────────
+
+  /projects/{projectId}/evaluation-criteria:
+    get:
+      tags: [EvaluationCriteria]
+      summary: List evaluation criteria
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Evaluation criteria list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationCriteriaListResponse'
+    post:
+      tags: [EvaluationCriteria]
+      summary: Create evaluation criteria
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, description]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                scale: { type: string, default: low/medium/high }
+                weight: { type: number, default: 1.0 }
+      responses:
+        '201':
+          description: Criteria created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationCriteriaResponse'
+
+  /projects/{projectId}/evaluation-criteria/{id}:
+    put:
+      tags: [EvaluationCriteria]
+      summary: Update evaluation criteria
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                scale: { type: string }
+                weight: { type: number }
+      responses:
+        '200':
+          description: Criteria updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationCriteriaResponse'
+    delete:
+      tags: [EvaluationCriteria]
+      summary: Delete evaluation criteria and associated scores
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Criteria deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      deleted:
+                        type: boolean
+
+  /evidence/{evidenceId}/scores:
+    get:
+      tags: [EvaluationCriteria]
+      summary: Get custom scores for evidence
+      parameters:
+        - name: evidenceId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Custom scores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceCustomScoreListResponse'
+    post:
+      tags: [EvaluationCriteria]
+      summary: Add or update a custom score for evidence
+      parameters:
+        - name: evidenceId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [criteriaId, score]
+              properties:
+                criteriaId: { type: string }
+                score: { type: string }
+                modelId: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Score created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidenceCustomScoreResponse'
+
+  # ── Realtime / Presence ─────────────────────────────────────────────────
+
+  /projects/{projectId}/presence:
+    get:
+      tags: [Realtime]
+      summary: Get active users for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Presence list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceListResponse'
+    post:
+      tags: [Realtime]
+      summary: Update user presence heartbeat
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userName, page]
+              properties:
+                userName: { type: string }
+                page: { type: string }
+      responses:
+        '200':
+          description: Presence updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok:
+                        type: boolean
+
+  /projects/{projectId}/events/live:
+    get:
+      tags: [Realtime]
+      summary: SSE stream for real-time project events
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /projects/{projectId}/broadcast:
+    post:
+      tags: [Realtime]
+      summary: Broadcast event to all connected SSE clients
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event, data]
+              properties:
+                event: { type: string }
+                data: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Event broadcast
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      broadcast:
+                        type: boolean
+
+  # ── Run Lifecycle (Pause/Resume) ──────────────────────────────────────────
+
+  /runs/{runId}/pause:
+    post:
+      tags: [Runs]
+      summary: Pause an active run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run paused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      success: { type: boolean }
+                      message: { type: string }
+        '404':
+          description: Run not found
+
+  /runs/{runId}/resume:
+    post:
+      tags: [Runs]
+      summary: Resume a paused run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run resumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      success: { type: boolean }
+                      message: { type: string }
+        '404':
+          description: Run not found
+
+  /runs/{runId}/stages/{stageName}/pause:
+    post:
+      tags: [Runs]
+      summary: Pause a specific stage
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - name: stageName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stage paused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      success: { type: boolean }
+                      message: { type: string }
+        '404':
+          description: Run or stage not found
+
+  /runs/{runId}/stages/{stageName}/resume:
+    post:
+      tags: [Runs]
+      summary: Resume a paused stage
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - name: stageName
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stage resumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      success: { type: boolean }
+                      message: { type: string }
+        '404':
+          description: Run or stage not found
+
+  /runs/{runId}/model-calls:
+    get:
+      tags: [Runs]
+      summary: Get model call history for a run
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Model call history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ModelCall'
+        '404':
+          description: Run not found
+
+  /projects/{projectId}/runs/compare:
+    get:
+      tags: [Runs]
+      summary: Compare two runs side by side
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: run1
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: run2
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run comparison
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      run1: { type: object }
+                      run2: { type: object }
+        '400':
+          description: Missing run1 or run2 parameters
+
+  # ── Graph / Citation ─────────────────────────────────────────────────────
+
+  /projects/{projectId}/citation-graph:
+    get:
+      tags: [Graphs]
+      summary: Get citation graph nodes and edges for D3 visualization
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Citation graph
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      nodes:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/GraphNode'
+                      edges:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/GraphEdge'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/calibration:
+    get:
+      tags: [Graphs]
+      summary: Get confidence calibration metrics
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Calibration metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      calibrationBuckets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CalibrationBucket'
+                      summary:
+                        $ref: '#/components/schemas/CalibrationSummary'
+                      robustness:
+                        $ref: '#/components/schemas/RobustnessMetrics'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/dataset-export:
+    get:
+      tags: [Graphs]
+      summary: Export full deliberation trace as structured JSON
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dataset export
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      project: { type: object }
+                      ideaVersions: { type: array, items: { type: object } }
+                      claims: { type: array, items: { type: object } }
+                      evidence: { type: array, items: { type: object } }
+                      assessments: { type: array, items: { type: object } }
+                      reviews: { type: array, items: { type: object } }
+                      critiques: { type: array, items: { type: object } }
+                      decisions: { type: array, items: { type: object } }
+                      exportedAt: { type: string, format: date-time }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/cross-project-search:
+    post:
+      tags: [Graphs]
+      summary: Search claims and evidence across all other projects
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+                limit: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{projectId}/related-projects:
+    get:
+      tags: [Graphs]
+      summary: Get projects with overlapping knowledge
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Related projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      relatedProjects:
+                        type: array
+                        items: { type: object }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Literature Reviews ──────────────────────────────────────────────────
+
+  /projects/{projectId}/literature-reviews:
+    get:
+      tags: [LiteratureReviews]
+      summary: List literature reviews
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Literature review list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiteratureReviewListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [LiteratureReviews]
+      summary: Create a literature review
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, researchQuestion]
+              properties:
+                title: { type: string }
+                researchQuestion: { type: string }
+                modelIds:
+                  type: array
+                  items: { type: string }
+                  description: Optional model IDs to run background generation
+      responses:
+        '201':
+          description: Literature review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiteratureReviewResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{projectId}/literature-reviews/{reviewId}:
+    get:
+      tags: [LiteratureReviews]
+      summary: Get a literature review by ID
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: reviewId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Literature review detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiteratureReviewResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Hypotheses ──────────────────────────────────────────────────────────
+
+  /projects/{projectId}/hypotheses:
+    get:
+      tags: [Graphs]
+      summary: List hypotheses for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Hypotheses list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HypothesisListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Graphs]
+      summary: Create a hypothesis
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statement]
+              properties:
+                statement: { type: string }
+                ideaVersionId: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Hypothesis created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HypothesisResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /hypotheses/{hypothesisId}:
+    patch:
+      tags: [Graphs]
+      summary: Update a hypothesis
+      parameters:
+        - name: hypothesisId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                statement: { type: string }
+                status:
+                  type: string
+                  enum: [unexamined, testing, confirmed, rejected, inconclusive]
+                confidence: { type: number, nullable: true }
+                acceptedEvidenceIds: { type: array, items: { type: string } }
+                counterEvidenceIds: { type: array, items: { type: string } }
+                openQuestions: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: Hypothesis updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HypothesisResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Graphs]
+      summary: Delete a hypothesis
+      parameters:
+        - name: hypothesisId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Hypothesis deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      deleted: { type: boolean }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Argument Map Export ──────────────────────────────────────────────────
+
+  /projects/{projectId}/export/argument-map:
+    get:
+      tags: [Export]
+      summary: Export deliberation as Toulmin argument map
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Argument map
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Prompts ──────────────────────────────────────────────────────────────
+
+  /prompts:
+    get:
+      tags: [Prompts]
+      summary: List all prompt roles with version info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prompt role list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptRoleListResponse'
+
+  /prompts/{role}:
+    get:
+      tags: [Prompts]
+      summary: Get prompt version history for a role
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prompt history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptHistoryResponse'
+        '404':
+          description: Unknown role
+
+  /prompts/{role}/current:
+    get:
+      tags: [Prompts]
+      summary: Get current active prompt for a role
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current prompt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentPromptResponse'
+        '404':
+          description: Unknown role
+
+  /prompts/{role}/override:
+    put:
+      tags: [Prompts]
+      summary: Set a custom prompt override
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+                reason: { type: string }
+      responses:
+        '201':
+          description: Prompt override created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptOverrideResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: Unknown role
+
+  /prompts/{role}/reset:
+    post:
+      tags: [Prompts]
+      summary: Reset prompt to default
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prompt reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      role: { type: string }
+                      reset: { type: boolean }
+                      text: { type: string }
+        '404':
+          description: Unknown role
+
+  # ── Templates ────────────────────────────────────────────────────────────
+
+  /templates:
+    get:
+      tags: [Templates]
+      summary: List available research templates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Template list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateListResponse'
+
+  /templates/{templateId}:
+    get:
+      tags: [Templates]
+      summary: Get template details
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Template detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/from-template:
+    post:
+      tags: [Templates]
+      summary: Create a project from a template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [templateId, title, topic]
+              properties:
+                templateId: { type: string }
+                title: { type: string }
+                topic: { type: string }
+      responses:
+        '201':
+          description: Project created from template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Template not found
+
+  # ── Settings ─────────────────────────────────────────────────────────────
+
+  /settings/search-provider:
+    get:
+      tags: [Settings]
+      summary: Get user's default search provider
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current search provider setting
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      provider:
+                        type: string
+                        nullable: true
+                        enum: [mock, searxng, serpapi, web, manual]
+        '401':
+          description: Not authenticated
+    put:
+      tags: [Settings]
+      summary: Update user's default search provider
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider:
+                  type: string
+                  nullable: true
+                  enum: [mock, searxng, serpapi, web, manual]
+      responses:
+        '200':
+          description: Search provider updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      provider:
+                        type: string
+                        nullable: true
+        '401':
+          description: Not authenticated
+
+  # ── API Keys ────────────────────────────────────────────────────────────
+
+  /user/keys:
+    get:
+      tags: [ApiKeys]
+      summary: List user's API keys
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: API key list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyListResponse'
+        '401':
+          description: Not authenticated
+    post:
+      tags: [ApiKeys]
+      summary: Create a new API key (encrypted at rest)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label, provider, apiKey]
+              properties:
+                label: { type: string, maxLength: 100 }
+                provider:
+                  type: string
+                  enum: [openrouter, openai_compatible]
+                apiKey: { type: string, minLength: 1 }
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+        '401':
+          description: Not authenticated
+
+  /user/keys/{keyId}:
+    get:
+      tags: [ApiKeys]
+      summary: Get a single API key
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: API key detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ApiKeys]
+      summary: Update API key label or value
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string }
+                apiKey: { type: string }
+      responses:
+        '200':
+          description: API key updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ApiKeys]
+      summary: Delete an API key
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: API key deleted (no content)
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/keys/{keyId}/test:
+    post:
+      tags: [ApiKeys]
+      summary: Test a stored API key (returns decrypted key for testing)
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Key test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ok: { type: boolean }
+                      keyPrefix: { type: string }
+                      provider: { type: string }
+                      label: { type: string }
+                      apiKey: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /user/keys/status:
+    get:
+      tags: [ApiKeys]
+      summary: Get provider configuration status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Provider status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyStatusResponse'
+        '401':
+          description: Not authenticated
+
+  # ── Claim Extras ────────────────────────────────────────────────────────
+
+  /projects/{projectId}/claims/{claimId}/confidence-history:
+    get:
+      tags: [Claims]
+      summary: Get confidence history for a claim across deliberation rounds
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Confidence history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClaimConfidenceHistory'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/claims/{claimId}/dependencies:
+    get:
+      tags: [Claims]
+      summary: Get claim dependencies (supports/depends-on relationships)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Claim dependencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClaimDependency'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Claims]
+      summary: Create a dependency between two claims
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetClaimId, relation]
+              properties:
+                targetClaimId: { type: string }
+                relation:
+                  type: string
+                  enum: [supports, depends_on, contradicts, refines]
+      responses:
+        '201':
+          description: Dependency created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimDependencyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /projects/{projectId}/claims/{claimId}/dependencies/{dependencyId}:
+    delete:
+      tags: [Claims]
+      summary: Remove a claim dependency
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: claimId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: dependencyId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dependency removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      deleted: { type: boolean }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/claims/auto-detect-dependencies:
+    post:
+      tags: [Claims]
+      summary: Auto-detect dependencies between claims using AI
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Auto-detection complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      created: { type: integer }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Evidence Extras ─────────────────────────────────────────────────────
+
+  /projects/{projectId}/evidence/quality:
+    get:
+      tags: [Evidence]
+      summary: Get evidence quality assessment overview
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Evidence quality overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      totalCount: { type: integer }
+                      assessedCount: { type: integer }
+                      reliabilityDistribution:
+                        type: object
+                        additionalProperties: { type: integer }
+                      sourceTypeDistribution:
+                        type: object
+                        additionalProperties: { type: integer }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/evidence/stale:
+    get:
+      tags: [Evidence]
+      summary: Get evidence items at risk of staleness
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stale evidence list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StaleEvidenceReport'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /evidence/{evidenceId}/verify:
+    post:
+      tags: [Evidence]
+      summary: Verify a piece of evidence's source integrity
+      parameters:
+        - name: evidenceId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      verified: { type: boolean }
+                      message: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /evidence/{evidenceId}/provenance:
+    get:
+      tags: [Evidence]
+      summary: Get evidence chain of provenance (how it was discovered, assessed, used)
+      parameters:
+        - name: evidenceId
+          in: path
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Evidence provenance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Export Extras ───────────────────────────────────────────────────────
+
+  /projects/{projectId}/export/pdf:
+    get:
+      tags: [Export]
+      summary: Export project as PDF
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: PDF export
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{projectId}/export/reproducibility-pack:
+    get:
+      tags: [Export]
+      summary: Export reproducibility pack (all data for independent verification)
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reproducibility pack
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Model Key Management ────────────────────────────────────────────────
+
+  /models/{modelId}/key:
+    get:
+      tags: [Models]
+      summary: Get the API key reference for a model config
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Model key reference
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      apiKeyRef: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Models]
+      summary: Update the API key reference for a model config
+      parameters:
+        - $ref: '#/components/parameters/ModelId'
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apiKeyRef: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Model key reference updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Portfolio ───────────────────────────────────────────────────────────
+
+  /portfolio:
+    get:
+      tags: [Projects]
+      summary: Get multi-project portfolio overview
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Portfolio overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      totalProjects: { type: integer }
+                      activeProjects: { type: integer }
+                      totalClaims: { type: integer }
+                      supportedClaims: { type: integer }
+        '401':
+          description: Not authenticated
+
+  # ── Idea Versions Compare ───────────────────────────────────────────────
+
+  /idea-versions/compare:
+    get:
+      tags: [IdeaVersions]
+      summary: Compare two idea versions
+      parameters:
+        - name: v1
+          in: query
+          required: true
+          schema: { type: string }
+        - name: v2
+          in: query
+          required: true
+          schema: { type: string }
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Version comparison
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: object }
+        '400':
+          description: Missing v1 or v2 parameters
 
 components:
   securitySchemes:
@@ -1448,9 +3231,9 @@ components:
           default: 3
         loopMode:
           type: string
-          enum: [standard, self_improving]
+          enum: [standard, self_improving, adversarial]
           default: standard
-          description: standard runs the fixed pipeline; self_improving enables meta-prompt fixes and corrective actions
+          description: standard runs the fixed pipeline; self_improving enables meta-prompt fixes; adversarial adds counter-evidence probing
         searchProvider:
           type: string
           enum: [mock, searxng, serpapi, web, manual]
@@ -1822,3 +3605,332 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DecisionRecord'
+
+    Annotation:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entityType: { type: string }
+        entityId: { type: string }
+        authorId: { type: string, nullable: true }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    AnnotationResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Annotation'
+
+    AnnotationListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Annotation'
+
+    EvaluationCriteria:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        description: { type: string }
+        scale: { type: string }
+        weight: { type: number }
+        createdAt: { type: string, format: date-time }
+
+    EvaluationCriteriaResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/EvaluationCriteria'
+
+    EvaluationCriteriaListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvaluationCriteria'
+
+    EvidenceCustomScore:
+      type: object
+      properties:
+        id: { type: string }
+        evidenceId: { type: string }
+        criteriaId: { type: string }
+        score: { type: string }
+        modelId: { type: string, nullable: true }
+        criteria:
+          $ref: '#/components/schemas/EvaluationCriteria'
+          nullable: true
+
+    EvidenceCustomScoreResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/EvidenceCustomScore'
+
+    EvidenceCustomScoreListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceCustomScore'
+
+    UserPresence:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        userId: { type: string, nullable: true }
+        userName: { type: string }
+        page: { type: string }
+        lastSeenAt: { type: string, format: date-time }
+
+    PresenceListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            presence:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserPresence'
+
+    ContextManifest:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        runId: { type: string }
+        claimText: { type: string }
+        acceptedEvidence: { type: array, items: { type: object } }
+        rejectedEvidence: { type: array, items: { type: object } }
+        createdAt: { type: string, format: date-time }
+
+    ModelCall:
+      type: object
+      properties:
+        id: { type: string }
+        modelConfigId: { type: string }
+        provider: { type: string }
+        model: { type: string }
+        status: { type: string }
+        error: { type: string, nullable: true }
+        usage: { type: object, nullable: true }
+        messages:
+          type: array
+          items:
+            type: object
+            properties:
+              role: { type: string }
+              content: { type: string }
+        responseText: { type: string, nullable: true }
+        responseJson: { type: object, nullable: true }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+
+    GraphNode:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [claim, evidence, critique, review, decision] }
+        label: { type: string }
+        status: { type: string }
+        criticality: { type: string }
+        severity: { type: string }
+        verdict: { type: string }
+        decisionStatus: { type: string }
+        isCounter: { type: boolean }
+        reliability: { type: string }
+
+    GraphEdge:
+      type: object
+      properties:
+        source: { type: string }
+        target: { type: string }
+        relation: { type: string }
+        sourceType: { type: string }
+        targetType: { type: string }
+
+    CalibrationBucket:
+      type: object
+      properties:
+        range: { type: string, example: "0-20%" }
+        predicted: { type: number }
+        actual: { type: number }
+        count: { type: integer }
+
+    CalibrationSummary:
+      type: object
+      properties:
+        totalClaims: { type: integer }
+        supportedClaims: { type: integer }
+        contradictedClaims: { type: integer }
+        unverifiedClaims: { type: integer }
+        totalEvidence: { type: integer }
+        acceptedEvidence: { type: integer }
+        rejectedEvidence: { type: integer }
+        decisionCount: { type: integer }
+        evidenceAcceptanceRate: { type: number }
+
+    RobustnessMetrics:
+      type: object
+      properties:
+        robust: { type: integer }
+        vulnerable: { type: integer }
+        challenged: { type: integer }
+        robustnessScore: { type: number }
+
+    LiteratureReview:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        researchQuestion: { type: string }
+        status: { type: string, enum: [pending, running, completed, failed] }
+        searchStrategy: { type: object, nullable: true }
+        prismaFlow: { type: object, nullable: true }
+        findings:
+          type: array
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              relevance: { type: number }
+        gaps: { type: array, items: { type: string } }
+        conclusion: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    LiteratureReviewResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/LiteratureReview'
+
+    LiteratureReviewListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/LiteratureReview'
+
+    Hypothesis:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        ideaVersionId: { type: string, nullable: true }
+        statement: { type: string }
+        status:
+          type: string
+          enum: [unexamined, testing, confirmed, rejected, inconclusive]
+        confidence: { type: number, nullable: true }
+        acceptedEvidenceIds: { type: array, items: { type: string } }
+        counterEvidenceIds: { type: array, items: { type: string } }
+        openQuestions: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    HypothesisResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Hypothesis'
+
+    HypothesisListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hypothesis'
+
+    PromptRoleInfo:
+      type: object
+      properties:
+        role: { type: string }
+        hasCustomPrompt: { type: boolean }
+        totalVersions: { type: integer }
+        latestVersion: { type: integer }
+        defaultText: { type: string }
+
+    PromptRoleListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromptRoleInfo'
+
+    PromptVersion:
+      type: object
+      properties:
+        version: { type: integer }
+        text: { type: string }
+        reason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    PromptHistoryResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            role: { type: string }
+            defaultText: { type: string }
+            versions:
+              type: array
+              items:
+                $ref: '#/components/schemas/PromptVersion'
+
+    CurrentPromptResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            role: { type: string }
+            text: { type: string }
+            version: { type: integer }
+            isCustom: { type: boolean }
+
+    PromptOverrideResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            role: { type: string }
+            version: { type: integer }
+            text: { type: string }
+            reason: { type: string }
+
+    TemplateSummary:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+
+    TemplateListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateSummary'
+
+    TemplateResponse:
+      type: object
+      properties:
+        data: { type: object }

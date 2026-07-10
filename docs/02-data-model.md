@@ -406,3 +406,19 @@ CREATE EXTENSION IF NOT EXISTS vector;
 The Prisma schema template includes `SourceEmbedding` with `Unsupported("vector")?` so Codex has a concrete place to store future embeddings. If Prisma migration generation cannot fully manage the vector type, Codex must preserve the SQL migration and document the manual migration step.
 
 `SourceEmbedding` records are optional for the earliest MVP run. The system must still work with keyword/manual retrieval if embeddings are not yet generated.
+
+---
+
+## Post-MVP model additions
+
+See [13-new-features.md](./13-new-features.md) for full details on the following tables added after MVP:
+
+```text
+ClaimDependency         -- directed claim dependency graph
+LiteratureReview        -- automated literature review results
+Annotation              -- threaded comments on any entity
+EvaluationCriteria      -- custom evidence/claim evaluation scales
+EvidenceCustomScore     -- per-evidence scores against custom criteria
+UserPresence            -- live user presence tracking
+ArgumentMap             -- Toulmin argument map exports
+```

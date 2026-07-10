@@ -7,6 +7,8 @@ import { useState } from "react";
 import FeedbackButton from "@/components/FeedbackButton";
 import Pagination from "@/components/Pagination";
 import QualityDashboard from "@/components/QualityDashboard";
+import Modal from "@/components/Modal";
+import type { StaleEvidenceData } from "@/hooks/useEvidence";
 
 function AssessModal({ evidenceId, onClose }: { evidenceId: string; onClose: () => void }) {
   const { data: modelsData } = useModels();
@@ -22,57 +24,47 @@ function AssessModal({ evidenceId, onClose }: { evidenceId: string; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden" onClick={e => e.stopPropagation()}>
-        <header className="bg-gray-50 px-6 py-4 border-b">
-          <h2 className="text-lg font-bold text-gray-800">Assess Evidence</h2>
-          <p className="text-xs text-gray-500 mt-1">Select models to evaluate this source</p>
-        </header>
-        <div className="p-6 space-y-3">
-          {models.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">No models configured. Add models in Settings.</p>
-          ) : (
-            models.map((m: any) => (
-              <label key={m.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-100">
-                <input type="checkbox" checked={selectedModelIds.includes(m.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) setSelectedModelIds(prev => [...prev, m.id]);
-                    else setSelectedModelIds(prev => prev.filter(id => id !== m.id));
-                  }}
-                  className="rounded border-gray-300"
-                />
-                <div>
-                  <p className="text-sm font-medium">{m.name}</p>
-                  <p className="text-xs text-gray-400">{m.provider} &bull; {m.model}</p>
-                </div>
-              </label>
-            ))
-          )}
-          <div className="flex gap-3 pt-4">
-            <button onClick={onClose} className="flex-1 px-4 py-2 border rounded font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-            <button onClick={handleAssess} disabled={selectedModelIds.length === 0 || assessEvidence.isPending}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50">
-              {assessEvidence.isPending ? 'Assessing...' : `Assess with ${selectedModelIds.length} model${selectedModelIds.length !== 1 ? 's' : ''}`}
-            </button>
-          </div>
+    <Modal isOpen={true} onClose={onClose} title="Assess Evidence">
+      <p className="text-xs text-gray-500 mt-1">Select models to evaluate this source</p>
+      <div className="space-y-3 mt-4">
+        {models.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No models configured. Add models in Settings.</p>
+        ) : (
+          models.map((m: any) => (
+            <label key={m.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer border border-gray-100">
+              <input type="checkbox" checked={selectedModelIds.includes(m.id)}
+                onChange={(e) => {
+                  if (e.target.checked) setSelectedModelIds(prev => [...prev, m.id]);
+                  else setSelectedModelIds(prev => prev.filter(id => id !== m.id));
+                }}
+                className="rounded border-gray-300"
+              />
+              <div>
+                <p className="text-sm font-medium">{m.name}</p>
+                <p className="text-xs text-gray-400">{m.provider} &bull; {m.model}</p>
+              </div>
+            </label>
+          ))
+        )}
+        <div className="flex gap-3 pt-4">
+          <button onClick={onClose} className="flex-1 px-4 py-2 border rounded font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={handleAssess} disabled={selectedModelIds.length === 0 || assessEvidence.isPending}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:opacity-50">
+            {assessEvidence.isPending ? 'Assessing...' : `Assess with ${selectedModelIds.length} model${selectedModelIds.length !== 1 ? 's' : ''}`}
+          </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
 function EvidenceDetailPanel({ projectId, evidence, onClose }: { projectId: string; evidence: any; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <header className="bg-gray-50 px-6 py-4 border-b flex items-center justify-between sticky top-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-gray-800">Evidence Detail</h2>
-            <FeedbackButton projectId={projectId} targetType="evidence" targetId={evidence.id} />
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
-        </header>
-        <div className="p-6 space-y-5">
+    <Modal isOpen={true} onClose={onClose} title="Evidence Detail" maxWidth="max-w-2xl">
+      <div className="flex items-center gap-3 mb-4">
+        <FeedbackButton projectId={projectId} targetType="evidence" targetId={evidence.id} />
+      </div>
+      <div className="space-y-5">
           <div>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Title</p>
             <p className="text-sm font-medium">{evidence.title || 'Untitled'}</p>
@@ -84,7 +76,7 @@ function EvidenceDetailPanel({ projectId, evidence, onClose }: { projectId: stri
                 className="text-sm text-blue-600 hover:underline break-all">{evidence.sourceUrl}</a>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Source Type</p>
               <p className="text-sm capitalize">{evidence.sourceType?.replace(/_/g, ' ') || 'unknown'}</p>
@@ -133,13 +125,12 @@ function EvidenceDetailPanel({ projectId, evidence, onClose }: { projectId: stri
               }`}>{evidence.stalenessRisk}</span>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4 text-xs text-gray-400">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-400">
             <p>Retrieved: {evidence.retrievedAt ? new Date(evidence.retrievedAt).toLocaleDateString() : '—'}</p>
             {evidence.publishedAt && <p>Published: {new Date(evidence.publishedAt).toLocaleDateString()}</p>}
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -148,7 +139,8 @@ export default function EvidencePage() {
   const { data: evidenceData, isLoading } = useEvidence(projectId);
   const { data: claimsData } = useClaims(projectId);
   const { data: qualityData } = useEvidenceQuality(projectId);
-  const { data: staleData } = useStaleEvidence(projectId);
+  const { data: staleDataRaw } = useStaleEvidence(projectId);
+  const staleData = staleDataRaw ? { data: staleDataRaw.data as StaleEvidenceData } : undefined;
   const verifyEvidence = useVerifyEvidence();
   const [assessingEvidenceId, setAssessingEvidenceId] = useState<string | null>(null);
   const [viewingEvidence, setViewingEvidence] = useState<any>(null);

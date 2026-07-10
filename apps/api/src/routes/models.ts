@@ -101,7 +101,7 @@ export async function modelRoutes(fastify: FastifyInstance) {
         }
       };
     } catch (error: unknown) {
-      return reply.status(500).send({ error: `Test failed: ${(error as Error).message}` });
+      return reply.status(500).send({ error: 'Test failed' });
     }
   });
 

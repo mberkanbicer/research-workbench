@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id             String            @id @default(uuid())
-  email          String            @unique
-  passwordHash   String
-  name           String?
+  id                    String               @id @default(uuid())
+  email                 String               @unique
+  passwordHash          String
+  name                  String?
   defaultSearchProvider String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  projects       ResearchProject[]
-  sessions       AuthSession[]
-  modelConfigs   ModelConfig[]
-  apiKeys        UserApiKey[]
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  sessions              AuthSession[]
+  documentComments      DocumentComment[]
+  grantedPermissions    DocumentPermission[] @relation("grantedPermissions")
+  documentPermissions   DocumentPermission[]
+  documentVersions      DocumentVersion[]
+  latexTemplates        LaTeXTemplate[]
+  modelConfigs          ModelConfig[]
+  projects              ResearchProject[]
+  apiKeys               UserApiKey[]
 }
 
 model AuthSession {
@@ -33,44 +38,46 @@ model AuthSession {
 }
 
 model ResearchProject {
-  id               String            @id @default(uuid())
-  title            String
-  goal             String
-  currentSynthesis String?
-  status           String            @default("active")
-  staleThresholdDays Int             @default(180)
-  userId           String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  user             User?             @relation(fields: [userId], references: [id])
-  claims           Claim[]
-  critiques        Critique[]
-  decisions        DecisionRecord[]
-  evidence         Evidence[]
-  hypotheses       Hypothesis[]
-  ideaVersions     IdeaVersion[]
-  modelReviews     ModelReview[]
-  rawEvents        RawEvent[]
-  sessions         ResearchSession[]
-  tasks            ResearchTask[]
-  runEvents        RunEvent[]
-  literatureReviews LiteratureReview[]
+  id                 String             @id @default(uuid())
+  title              String
+  goal               String
+  currentSynthesis   String?
+  status             String             @default("active")
+  userId             String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  staleThresholdDays Int                @default(180)
+  claims             Claim[]
+  critiques          Critique[]
+  decisions          DecisionRecord[]
+  evidence           Evidence[]
+  hypotheses         Hypothesis[]
+  ideaVersions       IdeaVersion[]
+  latexDocuments     LaTeXDocument[]
+  literatureReviews  LiteratureReview[]
+  modelReviews       ModelReview[]
+  rawEvents          RawEvent[]
+  references         Reference[]
+  user               User?              @relation(fields: [userId], references: [id])
+  sessions           ResearchSession[]
+  tasks              ResearchTask[]
+  runEvents          RunEvent[]
 }
 
 model LiteratureReview {
-  id              String          @id @default(uuid())
-  projectId       String
-  title           String
+  id               String          @id @default(uuid())
+  projectId        String
+  title            String
   researchQuestion String
-  status          String          @default("in_progress")
-  searchStrategy  Json?
-  prismaFlow      Json?
-  findings        Json?
-  gaps            Json?
-  conclusion      String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  project         ResearchProject @relation(fields: [projectId], references: [id])
+  status           String          @default("in_progress")
+  searchStrategy   Json?
+  prismaFlow       Json?
+  findings         Json?
+  gaps             Json?
+  conclusion       String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  project          ResearchProject @relation(fields: [projectId], references: [id])
 }
 
 model ResearchSession {
@@ -104,30 +111,31 @@ model IdeaVersion {
 }
 
 model Claim {
-  id               String          @id @default(uuid())
+  id               String            @id @default(uuid())
   projectId        String
   ideaVersionId    String
   text             String
   type             String
-  requiresEvidence Boolean         @default(true)
+  requiresEvidence Boolean           @default(true)
   criticality      String
-  status           String          @default("unverified")
+  status           String            @default("unverified")
   confidence       Float?
-  createdAt        DateTime        @default(now())
-  ideaVersion      IdeaVersion     @relation(fields: [ideaVersionId], references: [id])
-  project          ResearchProject @relation(fields: [projectId], references: [id])
+  createdAt        DateTime          @default(now())
+  ideaVersion      IdeaVersion       @relation(fields: [ideaVersionId], references: [id])
+  project          ResearchProject   @relation(fields: [projectId], references: [id])
   dependencies     ClaimDependency[] @relation("fromClaim")
   dependents       ClaimDependency[] @relation("toClaim")
 }
 
 model ClaimDependency {
-  id            String   @id @default(uuid())
-  fromClaimId   String
-  toClaimId     String
-  relation      String   @default("depends_on")
-  createdAt     DateTime @default(now())
-  fromClaim     Claim    @relation("fromClaim", fields: [fromClaimId], references: [id])
-  toClaim       Claim    @relation("toClaim", fields: [toClaimId], references: [id])
+  id          String   @id @default(uuid())
+  fromClaimId String
+  toClaimId   String
+  relation    String   @default("depends_on")
+  createdAt   DateTime @default(now())
+  fromClaim   Claim    @relation("fromClaim", fields: [fromClaimId], references: [id])
+  toClaim     Claim    @relation("toClaim", fields: [toClaimId], references: [id])
+
   @@unique([fromClaimId, toClaimId])
 }
 
@@ -164,7 +172,7 @@ model ResearchTask {
 }
 
 model Evidence {
-  id                  String               @id @default(uuid())
+  id                  String                @id @default(uuid())
   projectId           String
   claimId             String?
   discoveredByModelId String?
@@ -172,19 +180,19 @@ model Evidence {
   title               String
   publisher           String?
   publishedAt         DateTime?
-  retrievedAt         DateTime             @default(now())
+  retrievedAt         DateTime              @default(now())
   sourceType          String
   excerpt             String?
   summary             String?
   rawContentRef       String?
-  reliability         String               @default("pending")
-  relevance           String               @default("pending")
-  status              String               @default("pending_review")
-  stalenessRisk       String               @default("medium")
-  isCounter           Boolean              @default(false)
+  reliability         String                @default("pending")
+  relevance           String                @default("pending")
+  status              String                @default("pending_review")
+  stalenessRisk       String                @default("medium")
+  isCounter           Boolean               @default(false)
+  createdAt           DateTime              @default(now())
   lastVerifiedAt      DateTime?
-  createdAt           DateTime             @default(now())
-  project             ResearchProject      @relation(fields: [projectId], references: [id])
+  project             ResearchProject       @relation(fields: [projectId], references: [id])
   assessments         EvidenceAssessment[]
   customScores        EvidenceCustomScore[]
 }
@@ -220,21 +228,21 @@ model ModelConfig {
   isEnabled              Boolean     @default(true)
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
-  user                   User?       @relation(fields: [userId], references: [id])
   calls                  ModelCall[]
+  user                   User?       @relation(fields: [userId], references: [id])
 }
 
 model UserApiKey {
-  id             String   @id @default(uuid())
-  userId         String
-  label          String
-  provider       String
-  keyPrefix      String
-  keyHash        String
-  encryptedKey   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id])
+  id           String   @id @default(uuid())
+  userId       String
+  label        String
+  provider     String
+  keyPrefix    String
+  keyHash      String
+  encryptedKey String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
@@ -368,7 +376,10 @@ model KnowledgeEdge {
   toId      String
   relation  String
   createdAt DateTime @default(now())
+  projectId String
 
+  @@unique([fromType, fromId, toType, toId, relation])
+  @@index([projectId])
   @@index([fromType, fromId])
   @@index([toType, toId])
 }
@@ -403,9 +414,6 @@ model SourceEmbedding {
   objectType String
   objectId   String
   text       String
-  // NOTE: Stored as JSON.stringify(number[]) for MVP.
-  // When upgrading to pgvector: change to `Unsupported("vector(768)")`
-  // and use $queryRaw for cosine similarity searches.
   embedding  String?
   createdAt  DateTime @default(now())
 
@@ -422,14 +430,6 @@ model RunStage {
   updatedAt DateTime    @updatedAt
 
   @@unique([runId, stageName])
-}
-
-enum StageStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  FAILED
-  PAUSED
 }
 
 model PromptVersion {
@@ -457,14 +457,14 @@ model PromptCall {
 }
 
 model UserFeedback {
-  id             String   @id @default(uuid())
-  projectId      String
-  targetType     String   // 'critique' | 'evidence' | 'model_review'
-  targetId       String
-  feedbackType   String   // 'positive' | 'negative'
-  category       String?  // 'helpful' | 'accurate' | 'relevant' | 'unclear' | 'wrong' | 'biased'
-  comment        String?
-  createdAt      DateTime @default(now())
+  id           String   @id @default(uuid())
+  projectId    String
+  targetType   String
+  targetId     String
+  feedbackType String
+  category     String?
+  comment      String?
+  createdAt    DateTime @default(now())
 
   @@index([projectId, targetType, targetId])
 }
@@ -497,13 +497,13 @@ model Annotation {
 }
 
 model EvaluationCriteria {
-  id          String   @id @default(uuid())
+  id          String                @id @default(uuid())
   projectId   String
   name        String
   description String
-  scale       String   @default("low/medium/high")
-  weight      Float    @default(1.0)
-  createdAt   DateTime @default(now())
+  scale       String                @default("low/medium/high")
+  weight      Float                 @default(1.0)
+  createdAt   DateTime              @default(now())
   scores      EvidenceCustomScore[]
 
   @@unique([projectId, name])
@@ -511,15 +511,14 @@ model EvaluationCriteria {
 }
 
 model EvidenceCustomScore {
-  id         String   @id @default(uuid())
+  id         String             @id @default(uuid())
   evidenceId String
   criteriaId String
   score      String
   modelId    String?
-  createdAt  DateTime @default(now())
-
-  evidence   Evidence     @relation(fields: [evidenceId], references: [id])
+  createdAt  DateTime           @default(now())
   criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id])
+  evidence   Evidence           @relation(fields: [evidenceId], references: [id])
 
   @@unique([evidenceId, criteriaId])
   @@index([evidenceId])
@@ -535,4 +534,142 @@ model UserPresence {
 
   @@index([projectId])
   @@index([lastSeenAt])
+}
+
+model ArgumentMap {
+  id        String   @id @default(uuid())
+  projectId String
+  title     String
+  nodes     Json
+  edges     Json
+  format    String   @default("toulmin")
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model LaTeXDocument {
+  id          String               @id @default(uuid())
+  projectId   String
+  title       String
+  content     String               @default("")
+  template    String               @default("article")
+  metadata    Json?
+  compiledPdf String?
+  status      String               @default("draft")
+  lastError   String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  comments    DocumentComment[]
+  permissions DocumentPermission[]
+  versions    DocumentVersion[]
+  project     ResearchProject      @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+}
+
+model DocumentPermission {
+  id         String        @id @default(uuid())
+  documentId String
+  userId     String
+  role       String
+  grantedBy  String?
+  createdAt  DateTime      @default(now())
+  document   LaTeXDocument @relation(fields: [documentId], references: [id])
+  granter    User?         @relation("grantedPermissions", fields: [grantedBy], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
+
+  @@unique([documentId, userId])
+  @@index([documentId])
+  @@index([userId])
+}
+
+model DocumentVersion {
+  id         String        @id @default(uuid())
+  documentId String
+  version    Int
+  content    String
+  title      String
+  metadata   Json?
+  authorId   String?
+  message    String?
+  createdAt  DateTime      @default(now())
+  author     User?         @relation(fields: [authorId], references: [id])
+  document   LaTeXDocument @relation(fields: [documentId], references: [id])
+
+  @@unique([documentId, version])
+  @@index([documentId])
+}
+
+model DocumentComment {
+  id          String        @id @default(uuid())
+  documentId  String
+  userId      String?
+  content     String
+  parentId    String?
+  startOffset Int
+  endOffset   Int
+  resolved    Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  document    LaTeXDocument @relation(fields: [documentId], references: [id])
+  user        User?         @relation(fields: [userId], references: [id])
+
+  @@index([documentId])
+  @@index([userId])
+}
+
+model LaTeXTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String
+  content     String
+  authorId    String?
+  isPublic    Boolean  @default(false)
+  downloads   Int      @default(0)
+  rating      Float?
+  tags        String[]
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      User?    @relation(fields: [authorId], references: [id])
+
+  @@index([category])
+  @@index([isPublic])
+  @@index([authorId])
+}
+
+model Reference {
+  id          String          @id @default(uuid())
+  projectId   String
+  title       String
+  authors     String[]
+  year        Int?
+  journal     String?
+  volume      String?
+  pages       String?
+  doi         String?
+  url         String?
+  abstract    String?
+  citationKey String
+  type        String
+  tags        String[]
+  metadata    Json?
+  source      String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  project     ResearchProject @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, citationKey])
+  @@index([projectId])
+  @@index([citationKey])
+}
+
+enum StageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  PAUSED
 }

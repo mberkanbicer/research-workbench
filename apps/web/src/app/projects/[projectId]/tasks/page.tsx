@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useProject, useRunTask, useUpdateTask } from "@/hooks/useApi";
 import { useState, useMemo } from "react";
 import Pagination from "@/components/Pagination";
+import { useToast } from "@/components/Toast";
 
 const PAGE_SIZE = 20;
 
@@ -15,6 +16,7 @@ export default function TasksPage() {
   const updateTask = useUpdateTask();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const { addToast } = useToast();
 
   if (isLoading) return <div className="p-8">Loading tasks...</div>;
   if (projectData?.error) {
@@ -38,8 +40,9 @@ export default function TasksPage() {
     setActionLoading(taskId);
     try {
       await runTask.mutateAsync(taskId);
+      addToast('Task started successfully', 'success');
     } catch (err) {
-      console.error('Failed to run task:', err);
+      addToast('Failed to start task', 'error');
     }
     setActionLoading(null);
     refetch();
@@ -50,8 +53,9 @@ export default function TasksPage() {
     setActionLoading(taskId);
     try {
       await updateTask.mutateAsync({ taskId, data: { status: 'cancelled' } });
+      addToast('Task cancelled', 'success');
     } catch (err) {
-      console.error('Failed to cancel task:', err);
+      addToast('Failed to cancel task', 'error');
     }
     setActionLoading(null);
     refetch();
@@ -62,8 +66,9 @@ export default function TasksPage() {
     setActionLoading(taskId);
     try {
       await updateTask.mutateAsync({ taskId, data: { status: 'blocked' } });
+      addToast('Task blocked', 'success');
     } catch (err) {
-      console.error('Failed to block task:', err);
+      addToast('Failed to block task', 'error');
     }
     setActionLoading(null);
     refetch();
@@ -75,8 +80,9 @@ export default function TasksPage() {
     setActionLoading(taskId);
     try {
       await updateTask.mutateAsync({ taskId, data: { objective: newObjective } });
+      addToast('Task objective updated', 'success');
     } catch (err) {
-      console.error('Failed to update task:', err);
+      addToast('Failed to update task', 'error');
     }
     setActionLoading(null);
     refetch();

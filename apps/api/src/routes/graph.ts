@@ -74,7 +74,7 @@ export async function graphRoutes(fastify: FastifyInstance) {
       prisma.claim.findMany({ where: { projectId } }),
       prisma.evidence.findMany({ where: { projectId } }),
       prisma.decisionRecord.findMany({ where: { projectId } }),
-      prisma.claimConfidenceHistory.findMany({ where: { claim: { projectId } } }),
+      prisma.claimConfidenceHistory.findMany({ where: { projectId } }),
     ]);
 
     // Compute calibration buckets
@@ -276,7 +276,7 @@ export async function graphRoutes(fastify: FastifyInstance) {
 
       try {
         const { services } = await buildServices(modelIds);
-        const result = await services.generateLiteratureReview(researchQuestion, evidence, claims, modelIds[0]);
+        const result = await services.generateLiteratureReview(researchQuestion, evidence as any, claims as any, modelIds[0]);
 
         await prisma.literatureReview.update({
           where: { id: review.id },
@@ -346,10 +346,35 @@ export async function graphRoutes(fastify: FastifyInstance) {
     try {
       const { buildServices } = await import('../orchestrator/service-builder.js');
       const { services } = await buildServices(modelIds);
-      const argumentMap = await services.generateArgumentMap(claims, evidence, critiques, modelIds[0]);
-      return { data: argumentMap };
+      const result = await services.generateArgumentMap(claims as any, evidence as any, critiques, modelIds[0]);
+      // Persist the argument map — wrap in nodes/edges for storage
+      const saved = await prisma.argumentMap.create({
+        data: {
+          projectId,
+          title: `Argument Map — ${claims.length} claims`,
+          nodes: [result],
+          edges: [],
+          format: 'toulmin',
+        },
+      });
+      return { data: { argumentMap: saved, generated: result } };
     } catch (err) {
-      return { data: { argumentMaps: [], error: (err as Error).message } };
+      return { data: { argumentMaps: [], error: 'Failed to generate argument map' } };
     }
+  });
+
+  /**
+   * GET /projects/:projectId/argument-maps
+   * List saved argument maps for a project.
+   */
+  fastify.get('/projects/:projectId/argument-maps', async (request, reply) => {
+    const { projectId } = request.params as { projectId: string };
+    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+
+    const maps = await prisma.argumentMap.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { data: maps };
   });
 }

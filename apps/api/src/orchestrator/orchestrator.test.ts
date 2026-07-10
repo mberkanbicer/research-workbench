@@ -7,266 +7,12 @@ import { ModelGateway, MockModelAdapter, MockSearchAdapter } from '@repo/model-g
 import { IdeaVersion, Claim, Evidence } from '@repo/shared';
 
 // ---------------------------------------------------------------------------
-// In-memory store factory (used by hoisted mock)
+// In-memory store (shared from test-utils)
 // ---------------------------------------------------------------------------
 type Store = Record<string, Map<string, any>>;
 
-function createEmptyStore(): Store {
-  return {
-    researchProject: new Map(),
-    ideaVersion: new Map(),
-    claim: new Map(),
-    evidence: new Map(),
-    evidenceAssessment: new Map(),
-    modelConfig: new Map(),
-    modelReview: new Map(),
-    critique: new Map(),
-    critiqueResponse: new Map(),
-    decisionRecord: new Map(),
-    researchTask: new Map(),
-    runEvent: new Map(),
-    rawEvent: new Map(),
-    runStage: new Map(),
-    knowledgeEdge: new Map(),
-    contextManifest: new Map(),
-    modelCall: new Map(),
-    hypothesis: new Map(),
-    summary: new Map(),
-    sourceEmbedding: new Map(),
-    claimConfidenceHistory: new Map(),
-    promptVersion: new Map(),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Hoisted mock setup — runs before any imports
-// ---------------------------------------------------------------------------
 const { mockPrisma, mockStore } = vi.hoisted(() => {
-  function id() { return crypto.randomUUID(); }
-
-  function makeModel(store: Store, table: string) {
-    return {
-      findUnique: (args: any) => {
-        const item = store[table]?.get(args.where.id);
-        if (!item) return null;
-        // Resolve include relations
-        if (args?.include) {
-          const resolved: any = { ...item };
-          for (const [relation, relOpts] of Object.entries(args.include)) {
-            const relTable = relation === 'ideaVersions' ? 'ideaVersion'
-              : relation === 'claims' ? 'claim'
-              : relation === 'evidence' ? 'evidence'
-              : relation === 'decisions' ? 'decisionRecord'
-              : relation === 'critiques' ? 'critique'
-              : relation === 'modelReviews' ? 'modelReview'
-              : relation;
-            // Find all entities in the related table that reference this item
-            let related = Array.from((store[relTable] || new Map()).values())
-              .filter((r: any) => r.projectId === item.id || r[table.toLowerCase() + 'Id'] === item.id);
-            // Apply sub-ordering
-            function sortItems(arr: any[], orderBy: any) {
-              for (const [field, dir] of Object.entries(orderBy)) {
-                const mul = dir === 'desc' ? -1 : 1;
-                arr.sort((a: any, b: any) => {
-                  const av = a[field] instanceof Date ? a[field].getTime() : (a[field] || 0);
-                  const bv = b[field] instanceof Date ? b[field].getTime() : (b[field] || 0);
-                  if (av > bv) return mul;
-                  if (av < bv) return -mul;
-                  return 0;
-                });
-              }
-            }
-            if (relOpts && typeof relOpts === 'object' && 'orderBy' in (relOpts as any)) {
-              sortItems(related, (relOpts as any).orderBy);
-            }
-            if (relOpts && typeof relOpts === 'object' && 'take' in (relOpts as any)) {
-              related = related.slice(0, (relOpts as any).take);
-            }
-            resolved[relation] = related;
-          }
-          return resolved;
-        }
-        return item;
-      },
-      findFirst: (args: any) => {
-        let items = Array.from((store[table] || new Map()).values());
-        const where = args?.where;
-        if (where) {
-          for (const [key, val] of Object.entries(where)) {
-            if (val && typeof val === 'object') {
-              if ('in' in (val as any)) {
-                items = items.filter((item: any) => (val as any).in?.includes(item[key]));
-              } else if ('notIn' in (val as any)) {
-                items = items.filter((item: any) => !(val as any).notIn?.includes(item[key]));
-              } else if ('contains' in (val as any)) {
-                const needle = String((val as any).contains || '').toLowerCase();
-                items = items.filter((item: any) => String(item[key] || '').toLowerCase().includes(needle));
-              } else if ('startsWith' in (val as any)) {
-                items = items.filter((item: any) => String(item[key] || '').startsWith((val as any).startsWith));
-              } else if ('gt' in (val as any)) {
-                items = items.filter((item: any) => new Date(item[key]) > new Date((val as any).gt));
-              } else {
-                for (const [subKey, subVal] of Object.entries(val)) {
-                  if (subKey === 'in') {
-                    items = items.filter((item: any) => (subVal as any[])?.includes(item[key]));
-                  }
-                }
-              }
-            } else if (val !== undefined && val !== null) {
-              items = items.filter((item: any) => item[key] === val);
-            }
-          }
-        }
-        function sortItems(arr: any[], orderBy: any) {
-          for (const [field, dir] of Object.entries(orderBy)) {
-            const mul = dir === 'desc' ? -1 : 1;
-            arr.sort((a: any, b: any) => {
-              const av = a[field] instanceof Date ? a[field].getTime() : (a[field] || 0);
-              const bv = b[field] instanceof Date ? b[field].getTime() : (b[field] || 0);
-              if (av > bv) return mul;
-              if (av < bv) return -mul;
-              return 0;
-            });
-          }
-        }
-        if (args?.orderBy) {
-          sortItems(items, args.orderBy);
-        }
-        return items[0] || null;
-      },
-      findMany: (args: any) => {
-        let items = Array.from((store[table] || new Map()).values());
-        const where = args?.where;
-        if (where) {
-          for (const [key, val] of Object.entries(where)) {
-            if (val && typeof val === 'object') {
-              if ('in' in (val as any)) {
-                items = items.filter((item: any) => (val as any).in?.includes(item[key]));
-              } else if ('notIn' in (val as any)) {
-                items = items.filter((item: any) => !(val as any).notIn?.includes(item[key]));
-              } else if ('contains' in (val as any)) {
-                const needle = String((val as any).contains || '').toLowerCase();
-                items = items.filter((item: any) => String(item[key] || '').toLowerCase().includes(needle));
-              } else if ('startsWith' in (val as any)) {
-                items = items.filter((item: any) => String(item[key] || '').startsWith((val as any).startsWith));
-              } else if ('gt' in (val as any)) {
-                items = items.filter((item: any) => new Date(item[key]) > new Date((val as any).gt));
-              } else {
-                for (const [subKey, subVal] of Object.entries(val)) {
-                  if (subKey === 'in') {
-                    items = items.filter((item: any) => (subVal as any[])?.includes(item[key]));
-                  }
-                }
-              }
-            } else if (val !== undefined && val !== null) {
-              items = items.filter((item: any) => item[key] === val);
-            }
-          }
-        }
-        function sortItems(arr: any[], orderBy: any) {
-          for (const [field, dir] of Object.entries(orderBy)) {
-            const mul = dir === 'desc' ? -1 : 1;
-            arr.sort((a: any, b: any) => {
-              const av = a[field] instanceof Date ? a[field].getTime() : (a[field] || 0);
-              const bv = b[field] instanceof Date ? b[field].getTime() : (b[field] || 0);
-              if (av > bv) return mul;
-              if (av < bv) return -mul;
-              return 0;
-            });
-          }
-        }
-        if (args?.orderBy) {
-          sortItems(items, args.orderBy);
-        }
-        return args?.take ? items.slice(0, args.take) : items;
-      },
-      create: (args: any) => {
-        const record = { ...args.data, id: args.data.id || id(), createdAt: new Date(), updatedAt: new Date() };
-        store[table]?.set(record.id, record);
-        return record;
-      },
-      update: (args: any) => {
-        const existing = store[table]?.get(args.where.id);
-        if (!existing) return null;
-        const updated = { ...existing, ...args.data, updatedAt: new Date() };
-        store[table]?.set(updated.id, updated);
-        return updated;
-      },
-      deleteMany: (args: any) => {
-        let count = 0;
-        const where = args?.where || {};
-        for (const [id, item] of (store[table] || new Map()).entries()) {
-          let matches = true;
-          for (const [key, val] of Object.entries(where)) {
-            if (item[key] !== val) { matches = false; break; }
-          }
-          if (matches) { store[table]?.delete(id); count++; }
-        }
-        return { count };
-      },
-      upsert: (args: any) => {
-        // Handle compound unique keys like { runId_stageName: { runId, stageName } }
-        let existing: any = null;
-        if (args.where.id) {
-          existing = store[table]?.get(args.where.id);
-        } else if (args.where.runId_stageName) {
-          const { runId, stageName } = args.where.runId_stageName;
-          for (const item of (store[table] || new Map()).values()) {
-            if (item.runId === runId && item.stageName === stageName) {
-              existing = item;
-              break;
-            }
-          }
-        } else {
-          // Try to match any where condition by iterating
-          for (const item of (store[table] || new Map()).values()) {
-            let matches = true;
-            for (const [key, val] of Object.entries(args.where)) {
-              if (typeof val === 'object' && val !== null) continue; // skip nested
-              if (item[key] !== val) { matches = false; break; }
-            }
-            if (matches) { existing = item; break; }
-          }
-        }
-        if (existing) {
-          const updated = { ...existing, ...args.update, updatedAt: new Date() };
-          store[table]?.set(updated.id, updated);
-          return updated;
-        }
-        const record = { ...args.create, id: args.create.id || id(), createdAt: new Date(), updatedAt: new Date() };
-        store[table]?.set(record.id, record);
-        return record;
-      },
-    };
-  }
-
-  const store: Store = createEmptyStore();
-
-  function buildPrisma(s: Store) {
-    const tables = Object.keys(s);
-    const prisma: any = {
-      $transaction: (arg: any) => {
-        if (typeof arg === 'function') {
-          const tx: any = {};
-          for (const t of tables) {
-            tx[t] = makeModel(s, t);
-          }
-          return arg(tx);
-        }
-        return arg;
-      },
-      $disconnect: () => {},
-    };
-    for (const t of tables) {
-      prisma[t] = makeModel(s, t);
-    }
-    return prisma;
-  }
-
-  return {
-    mockPrisma: buildPrisma(store),
-    mockStore: store,
-  };
+  return (globalThis as any).__createInMemoryPrisma();
 });
 
 // ---------------------------------------------------------------------------
@@ -356,7 +102,7 @@ function seedModelConfigs(store: Store): string[] {
 // ---------------------------------------------------------------------------
 describe('Orchestrator Flow', () => {
   beforeEach(async () => {
-    for (const map of Object.values(mockStore)) {
+    for (const map of Object.values(mockStore) as Map<string, unknown>[]) {
       map.clear();
     }
     const { resetSearchAdapter } = await import('./service-builder.js');
@@ -445,10 +191,10 @@ describe('Orchestrator Flow', () => {
     expect(claims[0].ideaVersionId).toBe(versionId);
 
     // Verify runStage was set
-    const stages = Array.from(mockStore.runStage!.values());
+    const stages = Array.from(mockStore.runStage!.values()) as any[];
     const extractionRunStage = stages.find((s: any) => s.stageName === 'extraction');
     expect(extractionRunStage).toBeDefined();
-    expect(extractionRunStage.status).toBe('COMPLETED');
+    expect(extractionRunStage!.status).toBe('COMPLETED');
   });
 
   it('performEvidenceDiscovery creates evidence items', async () => {
@@ -490,7 +236,7 @@ describe('Orchestrator Flow', () => {
 
     const events = Array.from(mockStore.runEvent!.values()).sort(
       (a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    ) as any[];
 
     // Check essential events exist (run.started is emitted by route, not orchestrator)
     const eventTypes = events.map((e: any) => e.type);
@@ -503,11 +249,11 @@ describe('Orchestrator Flow', () => {
     expect(eventTypes).toContain('phase.consensus.completed');
 
     // Check extraction produced claims
-    const extractionEvent = events.find((e: any) => e.type === 'phase.extraction.completed');
+    const extractionEvent = events.find((e: any) => e.type === 'phase.extraction.completed') as any;
     expect(extractionEvent.payload.count).toBeGreaterThan(0);
 
     // Check reviews were performed
-    const reviewEvent = events.find((e: any) => e.type === 'phase.review.completed');
+    const reviewEvent = events.find((e: any) => e.type === 'phase.review.completed') as any;
     expect(reviewEvent.payload.count).toBeGreaterThan(0);
     expect(Array.isArray(reviewEvent.payload.reviews)).toBe(true);
     if (reviewEvent.payload.reviews.length > 0) {
@@ -528,7 +274,7 @@ describe('Orchestrator Flow', () => {
 
     await goalLoop.run({ projectId, modelIds, maxIterations: 2, runId });
 
-    const decisions = Array.from(mockStore.decisionRecord!.values());
+    const decisions = Array.from(mockStore.decisionRecord!.values()) as any[];
     if (decisions.length > 0) {
       const d = decisions[0];
       expect(d.projectId).toBe(projectId);
@@ -573,7 +319,7 @@ describe('Orchestrator Flow', () => {
       goalLoop.run({ projectId, modelIds, maxIterations: 2, runId })
     ).resolves.not.toThrow();
 
-    const events = Array.from(mockStore.runEvent!.values());
+    const events = Array.from(mockStore.runEvent!.values()) as any[];
     const runFailed = events.find((e: any) => e.type === 'run.failed');
     expect(runFailed).toBeUndefined();
   });
@@ -581,7 +327,7 @@ describe('Orchestrator Flow', () => {
 
 describe('RunEvent Service', () => {
   beforeEach(async () => {
-    for (const map of Object.values(mockStore)) {
+    for (const map of Object.values(mockStore) as Map<string, unknown>[]) {
       map.clear();
     }
     const { resetSearchAdapter } = await import('./service-builder.js');
@@ -621,7 +367,7 @@ describe('RunEvent Service', () => {
 // ===========================================================================
 describe('Orchestrator Error Paths', () => {
   beforeEach(async () => {
-    for (const map of Object.values(mockStore)) {
+    for (const map of Object.values(mockStore) as Map<string, unknown>[]) {
       map.clear();
     }
     const { resetSearchAdapter } = await import('./service-builder.js');
@@ -729,7 +475,7 @@ describe('Orchestrator Error Paths', () => {
     ).resolves.not.toThrow();
 
     // Verify run completed without a fatal failure event
-    const events = Array.from(mockStore.runEvent!.values());
+    const events = Array.from(mockStore.runEvent!.values()) as any[];
     const runFailed = events.find((e: any) => e.type === 'run.failed');
     expect(runFailed).toBeUndefined();
   });

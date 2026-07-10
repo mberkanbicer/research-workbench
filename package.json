@@ -14,12 +14,28 @@
     "db:down": "docker compose down",
     "db:generate": "pnpm -C apps/api db:generate",
     "db:migrate": "pnpm -C apps/api db:migrate",
-    "test:e2e": "pnpm -C e2e test",
-    "lint": "pnpm typecheck",
-    "lint:fix": "prettier --write '**/*.{ts,tsx,json,yaml,yml,md}' '!**/node_modules' '!**/.next' '!**/dist'"
+    "test:e2e": "npx playwright test",
+    "lint": "eslint 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.{ts,tsx}' --max-warnings=100",
+    "lint:fix": "eslint --fix 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.{ts,tsx}' && prettier --write '**/*.{ts,tsx,json,yaml,yml,md}' '!**/node_modules' '!**/.next' '!**/dist'",
+    "format": "prettier --write '**/*.{ts,tsx,json,yaml,yml,md}' '!**/node_modules' '!**/.next' '!**/dist'",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix --max-warnings=100",
+      "prettier --write"
+    ],
+    "*.{json,yaml,yml,md}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@typescript-eslint/eslint-plugin": "^8.63.0",
+    "@typescript-eslint/parser": "^8.63.0",
     "eslint": "^8.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0"
   },

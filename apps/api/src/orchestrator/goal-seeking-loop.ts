@@ -170,7 +170,11 @@ export class GoalSeekingLoop {
       const checkCheckpoint = async (stageName: string) => {
         if (checkpointStages.includes(stageName)) {
           logger.info('Checkpoint reached — pausing for human review', { runId, stage: stageName });
-          await updateStage(runId, stageName, 'PAUSED');
+          await prisma.runStage.upsert({
+            where: { runId_stageName: { runId, stageName } },
+            update: { status: 'PAUSED' },
+            create: { runId, stageName, status: 'PAUSED' },
+          });
           await runEventService.record(runId, projectId, 'goal_loop.checkpoint', {
             stage: stageName, iteration: 0,
             message: `Paused at ${stageName} for human review. Resume via POST /runs/${runId}/resume`,
@@ -651,6 +655,12 @@ export class GoalSeekingLoop {
             achievementLevel,
             finalVote: consensusVote,
           }, 'system');
+          await runEventService.record(runId, projectId, 'run.completed', {
+            outcome: stopCheck.reason,
+            iterationsUsed: iteration,
+            achievementLevel,
+            finalVote: consensusVote,
+          });
 
           await runEventService.record(runId, projectId, 'goal_loop.completed', {
             outcome: stopCheck.reason,
@@ -783,6 +793,12 @@ export class GoalSeekingLoop {
         avgQualityScore: avgFinalScore,
         totalStagesAnalyzed: allScores.length,
       }, 'system');
+      await runEventService.record(runId, projectId, 'run.completed', {
+        outcome: 'max_iterations_reached',
+        iterationsUsed: maxIterations,
+        avgQualityScore: avgFinalScore,
+        totalStagesAnalyzed: allScores.length,
+      });
 
       await runEventService.record(runId, projectId, 'goal_loop.completed', {
         outcome: 'max_iterations_reached',

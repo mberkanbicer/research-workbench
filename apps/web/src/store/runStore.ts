@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type RunConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error';
+export type RunConnectionStatus = 'idle' | 'connecting' | 'open' | 'connected' | 'error';
 
 export interface RunEvent {
   id: string;

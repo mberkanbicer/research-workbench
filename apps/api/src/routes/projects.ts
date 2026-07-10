@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../prisma.js';
 import { generateMarkdownExport } from '../export/markdown-export.js';
 import { authMiddleware } from './auth.js';
+import { requireProjectAccess } from './ownership.js';
 
 const projectRepo = new ProjectRepository();
 
@@ -53,6 +54,36 @@ export async function projectRoutes(fastify: FastifyInstance) {
         ideaVersion: project.ideaVersions[0]
       }
     });
+  });
+
+  /**
+   * GET /projects/:projectId/events
+   * List raw events for a project (audit log).
+   */
+  fastify.get('/projects/:projectId/events', async (request, reply) => {
+    const { projectId } = request.params as { projectId: string };
+    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+
+    const { type, limit: limitStr, offset: offsetStr } = request.query as {
+      type?: string; limit?: string; offset?: string;
+    };
+    const limit = Math.min(parseInt(limitStr || '100', 10), 500);
+    const offset = parseInt(offsetStr || '0', 10);
+
+    const where: any = { projectId };
+    if (type) where.type = type;
+
+    const [events, total] = await Promise.all([
+      prisma.rawEvent.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.rawEvent.count({ where }),
+    ]);
+
+    return { data: events, meta: { total, limit, offset } };
   });
 
   fastify.get('/projects/:projectId', async (request, reply) => {
@@ -161,7 +192,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return reply.status(200).send({ data: { success: true } });
     } catch (error) {
       request.log.error({ error }, 'Failed to delete project');
-      return reply.status(500).send({ error: { code: 'DELETE_FAILED', message: (error as Error).message } });
+      return reply.status(500).send({ error: { code: 'DELETE_FAILED', message: 'Failed to delete project' } });
     }
   });
 
@@ -186,6 +217,75 @@ export async function projectRoutes(fastify: FastifyInstance) {
     reply.header('Content-Disposition', `attachment; filename="project-${projectId}.pdf"`);
     reply.type('application/pdf');
     return pdfBuffer;
+  });
+
+  /**
+   * GET /projects/:projectId/export/csv
+   * Export claims and evidence as CSV.
+   */
+  fastify.get('/projects/:projectId/export/csv', async (request, reply) => {
+    const { projectId } = request.params as { projectId: string };
+    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+
+    const [claims, evidence] = await Promise.all([
+      prisma.claim.findMany({ where: { projectId } }),
+      prisma.evidence.findMany({ where: { projectId } }),
+    ]);
+
+    // Claims CSV
+    const claimHeaders = ['id', 'text', 'type', 'criticality', 'status', 'confidence', 'createdAt'];
+    const claimRows = claims.map(c => [
+      c.id, `"${(c.text || '').replace(/"/g, '""')}"`, c.type, c.criticality, c.status,
+      c.confidence ?? '', c.createdAt.toISOString(),
+    ]);
+    const claimsCsv = [claimHeaders.join(','), ...claimRows.map(r => r.join(','))].join('\n');
+
+    // Evidence CSV
+    const evidenceHeaders = ['id', 'title', 'sourceType', 'reliability', 'relevance', 'status', 'claimId', 'createdAt'];
+    const evidenceRows = evidence.map(e => [
+      e.id, `"${(e.title || '').replace(/"/g, '""')}"`, e.sourceType, e.reliability, e.relevance,
+      e.status, e.claimId ?? '', e.createdAt.toISOString(),
+    ]);
+    const evidenceCsv = [evidenceHeaders.join(','), ...evidenceRows.map(r => r.join(','))].join('\n');
+
+    const csv = `# Claims (${claims.length})\n${claimsCsv}\n\n# Evidence (${evidence.length})\n${evidenceCsv}`;
+    reply.header('Content-Disposition', `attachment; filename="project-${projectId}.csv"`);
+    reply.type('text/csv');
+    return csv;
+  });
+
+  /**
+   * GET /projects/:projectId/export/bibtex
+   * Export evidence as BibTeX entries for academic citation.
+   */
+  fastify.get('/projects/:projectId/export/bibtex', async (request, reply) => {
+    const { projectId } = request.params as { projectId: string };
+    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+
+    const evidence = await prisma.evidence.findMany({ where: { projectId } });
+
+    const entries = evidence.map((e, i) => {
+      const key = `evidence${i + 1}`;
+      const author = e.publisher || 'Unknown';
+      const title = (e.title || 'Untitled').replace(/[{}]/g, '');
+      const year = e.publishedAt ? e.publishedAt.getFullYear() : new Date().getFullYear();
+      const url = e.sourceUrl || '';
+      const note = (e.excerpt || e.summary || '').replace(/[{}]/g, '').substring(0, 200);
+
+      return `@misc{${key},
+  author = {${author}},
+  title = {${title}},
+  year = {${year}},
+  url = {${url}},
+  note = {${note}},
+  howpublished = {${e.sourceType || 'unknown'} source}
+}`;
+    });
+
+    const bibtex = entries.join('\n\n');
+    reply.header('Content-Disposition', `attachment; filename="project-${projectId}.bib"`);
+    reply.type('application/x-bibtex');
+    return bibtex;
   });
 
   /**

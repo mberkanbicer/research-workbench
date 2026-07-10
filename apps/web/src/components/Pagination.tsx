@@ -23,21 +23,24 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
   }
 
   return (
-    <div className="flex items-center justify-center gap-1 mt-4">
+    <nav aria-label="Pagination" className="flex items-center justify-center gap-1 mt-4">
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
+        aria-label="Previous page"
         className="px-2 py-1 text-sm rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
       >
         Prev
       </button>
       {pages.map((page, i) =>
         page === '...' ? (
-          <span key={`ellipsis-${i}`} className="px-2 py-1 text-sm text-gray-400">...</span>
+          <span key={`ellipsis-${i}`} className="px-2 py-1 text-sm text-gray-400" aria-hidden="true">...</span>
         ) : (
           <button
             key={page}
             onClick={() => onPageChange(page)}
+            aria-label={`Page ${page}`}
+            aria-current={page === currentPage ? 'page' : undefined}
             className={`px-2 py-1 text-sm rounded border ${page === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}`}
           >
             {page}
@@ -47,10 +50,11 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
+        aria-label="Next page"
         className="px-2 py-1 text-sm rounded border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
       >
         Next
       </button>
-    </div>
+    </nav>
   );
 }

@@ -81,6 +81,9 @@ export async function realtimeRoutes(fastify: FastifyInstance) {
       await prisma.userPresence.update({
         where: { id: existing.id },
         data: { page: upsertData.page, lastSeenAt: upsertData.lastSeenAt },
+      }).catch(async () => {
+        // Record vanished between find and update — create fresh
+        await prisma.userPresence.create({ data: upsertData });
       });
     } else {
       await prisma.userPresence.create({ data: upsertData });

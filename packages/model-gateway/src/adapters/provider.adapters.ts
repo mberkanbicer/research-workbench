@@ -1,4 +1,5 @@
 import { ModelProviderAdapter, ModelCallParams, ModelResponse } from '../types.js';
+import { logger } from '../logger.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -16,13 +17,13 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, label = 'call'): 
       if (lastError.message?.includes('429') || lastError.message?.includes('rate_limit')) {
         // Rate limited — wait longer
         const delay = Math.pow(4, i) * 1000;
-        console.warn(`${label} rate limited, retry ${i + 1}/${retries} in ${delay}ms`);
+        logger.warn('Provider rate limited, retrying', { label, attempt: i + 1, maxRetries: retries, delayMs: delay });
         await sleep(delay);
         continue;
       }
       if (i < retries) {
         const delay = Math.pow(2, i) * 1000;
-        console.warn(`${label} attempt ${i + 1} failed: ${lastError.message}. Retrying in ${delay}ms...`);
+        logger.warn('Provider call failed, retrying', { label, attempt: i + 1, error: lastError.message, delayMs: delay });
         await sleep(delay);
       }
     }

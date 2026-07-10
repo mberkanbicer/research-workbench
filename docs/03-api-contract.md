@@ -465,3 +465,49 @@ Decisions
 Open questions
 Next actions
 ```
+
+---
+
+## Post-MVP endpoints
+
+See [13-new-features.md](./13-new-features.md) for full documentation of these endpoints:
+
+```text
+# Phase 1 - Intelligence & Analysis
+POST /evidence/cross-project-search
+GET  /projects/related-projects/:projectId
+GET  /projects/:projectId/evidence/stale
+POST /evidence/:evidenceId/verify
+POST /projects/:projectId/runs/compare
+POST /claims/:claimId/dependencies
+GET  /projects/:projectId/claims/dependencies
+POST /projects/:projectId/literature-reviews
+GET  /projects/:projectId/literature-reviews
+
+# Phase 2 - Feedback & Collaboration
+GET  /projects/:projectId/calibration
+POST /calibration/evaluate
+GET  /projects/portfolio
+POST /projects/:projectId/annotations
+GET  /projects/:projectId/annotations
+PATCH /annotations/:annotationId
+DELETE /annotations/:annotationId
+GET  /projects/:projectId/presence
+POST /projects/:projectId/presence
+GET  /evidence/:evidenceId/provenance
+POST /projects/:projectId/evaluation-criteria
+GET  /projects/:projectId/evaluation-criteria
+POST /evidence/:evidenceId/scores
+GET  /evidence/:evidenceId/scores
+
+# Phase 3 - Adversarial & Argument
+GET  /projects/:projectId/robustness
+GET  /projects/:projectId/citations
+POST /projects/:projectId/argument-map
+GET  /projects/:projectId/argument-maps
+GET  /argument-maps/:argumentMapId
+POST /projects/:projectId/reproducibility-pack
+
+# Phase 4 - Real-time
+GET  /projects/:projectId/events  (SSE)
+```

@@ -7,237 +7,15 @@ import { evidenceRoutes } from './evidence.js';
 import { ideaVersionRoutes } from './idea-versions.js';
 import { decisionRoutes } from './decisions.js';
 import { runRoutes } from './runs.js';
+import { createRateLimiter, apiRateLimiter, _resetBucketsForTesting } from '../middleware/rate-limit.js';
 
 // ---------------------------------------------------------------------------
-// In-memory store (same pattern as orchestrator.test.ts)
+// In-memory store (shared from test-utils)
 // ---------------------------------------------------------------------------
 type Store = Record<string, Map<string, any>>;
 
-function createEmptyStore(): Store {
-  return {
-    researchProject: new Map(),
-    ideaVersion: new Map(),
-    claim: new Map(),
-    evidence: new Map(),
-    evidenceAssessment: new Map(),
-    modelConfig: new Map(),
-    modelReview: new Map(),
-    critique: new Map(),
-    critiqueResponse: new Map(),
-    decisionRecord: new Map(),
-    researchTask: new Map(),
-    runEvent: new Map(),
-    rawEvent: new Map(),
-    runStage: new Map(),
-    knowledgeEdge: new Map(),
-    contextManifest: new Map(),
-    modelCall: new Map(),
-    hypothesis: new Map(),
-    summary: new Map(),
-    sourceEmbedding: new Map(),
-    researchSession: new Map(),
-    userFeedback: new Map(),
-    authSession: new Map(),
-    promptVersion: new Map(),
-    promptCall: new Map(),
-    user: new Map(),
-  };
-}
-
 const { mockPrisma, mockStore } = vi.hoisted(() => {
-  function id() { return crypto.randomUUID(); }
-
-  function makeModel(store: Store, table: string) {
-    return {
-      findUnique: (args: any) => {
-        const item = store[table]?.get(args.where.id);
-        if (!item) return null;
-        if (args?.include) {
-          const resolved: any = { ...item };
-          for (const [relation, _relOpts] of Object.entries(args.include)) {
-            const relTable = relation === 'ideaVersions' ? 'ideaVersion'
-              : relation === 'claims' ? 'claim'
-              : relation === 'evidence' ? 'evidence'
-              : relation === 'decisions' ? 'decisionRecord'
-              : relation === 'critiques' ? 'critique'
-              : relation === 'modelReviews' ? 'modelReview'
-              : relation;
-            let related = Array.from((store[relTable] || new Map()).values())
-              .filter((r: any) => r.projectId === item.id || r[table.toLowerCase() + 'Id'] === item.id);
-            resolved[relation] = related;
-          }
-          return resolved;
-        }
-        return item;
-      },
-      findFirst: (args: any) => {
-        let items = Array.from((store[table] || new Map()).values());
-        const where = args?.where;
-        if (where) {
-          for (const [key, val] of Object.entries(where)) {
-            if (val && typeof val === 'object') {
-              if ('in' in (val as any)) {
-                items = items.filter((item: any) => (val as any).in?.includes(item[key]));
-              } else if ('contains' in (val as any)) {
-                const needle = String((val as any).contains || '').toLowerCase();
-                items = items.filter((item: any) => String(item[key] || '').toLowerCase().includes(needle));
-              } else if ('notIn' in (val as any)) {
-                items = items.filter((item: any) => !(val as any).notIn?.includes(item[key]));
-              }
-            } else if (val !== undefined && val !== null) {
-              items = items.filter((item: any) => item[key] === val);
-            }
-          }
-        }
-        if (args?.orderBy) {
-          for (const [field, dir] of Object.entries(args.orderBy)) {
-            const mul = dir === 'desc' ? -1 : 1;
-            items.sort((a: any, b: any) => {
-              const av = a[field] instanceof Date ? a[field].getTime() : (a[field] || 0);
-              const bv = b[field] instanceof Date ? b[field].getTime() : (b[field] || 0);
-              if (av > bv) return mul;
-              if (av < bv) return -mul;
-              return 0;
-            });
-          }
-        }
-        return items[0] || null;
-      },
-      findMany: (args: any) => {
-        let items = Array.from((store[table] || new Map()).values());
-        const where = args?.where;
-        if (where) {
-          for (const [key, val] of Object.entries(where)) {
-            if (val && typeof val === 'object') {
-              if ('in' in (val as any)) {
-                items = items.filter((item: any) => (val as any).in?.includes(item[key]));
-              } else if ('notIn' in (val as any)) {
-                items = items.filter((item: any) => !(val as any).notIn?.includes(item[key]));
-              } else if ('contains' in (val as any)) {
-                const needle = String((val as any).contains || '').toLowerCase();
-                items = items.filter((item: any) => String(item[key] || '').toLowerCase().includes(needle));
-              } else if ('not' in (val as any)) {
-                const notVal = (val as any).not;
-                if (notVal && typeof notVal === 'object' && 'in' in notVal) {
-                  items = items.filter((item: any) => !(notVal as any).in?.includes(item[key]));
-                }
-              }
-            } else if (val !== undefined && val !== null) {
-              items = items.filter((item: any) => item[key] === val);
-            }
-          }
-        }
-        if (args?.orderBy) {
-          for (const [field, dir] of Object.entries(args.orderBy)) {
-            const mul = dir === 'desc' ? -1 : 1;
-            items.sort((a: any, b: any) => {
-              const av = a[field] instanceof Date ? a[field].getTime() : (a[field] || 0);
-              const bv = b[field] instanceof Date ? b[field].getTime() : (b[field] || 0);
-              if (av > bv) return mul;
-              if (av < bv) return -mul;
-              return 0;
-            });
-          }
-        }
-        return args?.take ? items.slice(0, args.take) : items;
-      },
-      create: (args: any) => {
-        const record = { ...args.data, id: args.data.id || id(), createdAt: new Date(), updatedAt: new Date() };
-        store[table]?.set(record.id, record);
-        return record;
-      },
-      update: (args: any) => {
-        const existing = store[table]?.get(args.where.id);
-        if (!existing) return null;
-        const updated = { ...existing, ...args.data, updatedAt: new Date() };
-        store[table]?.set(updated.id, updated);
-        return updated;
-      },
-      delete: (args: any) => {
-        store[table]?.delete(args.where.id);
-        return {};
-      },
-      deleteMany: (args: any) => {
-        let count = 0;
-        for (const [id, item] of (store[table] || new Map()).entries()) {
-          let matches = true;
-          for (const [key, val] of Object.entries(args?.where || {})) {
-            if (val && typeof val === 'object' && 'in' in val) {
-              if (!(val as { in: unknown[] }).in.includes(item[key])) { matches = false; break; }
-            } else if (item[key] !== val) { matches = false; break; }
-          }
-          if (matches) { store[table]?.delete(id); count++; }
-        }
-        return { count };
-      },
-      updateMany: (args: any) => {
-        let count = 0;
-        for (const [id, item] of (store[table] || new Map()).entries()) {
-          let matches = true;
-          for (const [key, val] of Object.entries(args?.where || {})) {
-            if (val && typeof val === 'object' && 'in' in (val as any)) {
-              if (!(val as any).in?.includes(item[key])) { matches = false; break; }
-            } else if (val !== undefined && val !== null && item[key] !== val) { matches = false; break; }
-          }
-          if (matches) {
-            const updated = { ...item, ...args.data, updatedAt: new Date() };
-            store[table]?.set(id, updated);
-            count++;
-          }
-        }
-        return { count };
-      },
-      count: (args: any) => {
-        return Array.from((store[table] || new Map()).values()).filter((item: any) => {
-          const where = args?.where || {};
-          for (const [key, val] of Object.entries(where)) {
-            if (item[key] !== val && !(val && typeof val === 'object' && 'in' in (val as any) && (val as any).in?.includes(item[key]))) return false;
-          }
-          return true;
-        }).length;
-      },
-      upsert: (args: any) => {
-        let existing: any = null;
-        if (args.where.runId_stageName) {
-          const { runId, stageName } = args.where.runId_stageName;
-          for (const item of (store[table] || new Map()).values()) {
-            if (item.runId === runId && item.stageName === stageName) { existing = item; break; }
-          }
-        } else if (args.where.id) {
-          existing = store[table]?.get(args.where.id);
-        }
-        if (existing) {
-          const updated = { ...existing, ...args.update, updatedAt: new Date() };
-          store[table]?.set(updated.id, updated);
-          return updated;
-        }
-        const record = { ...args.create, id: args.create.id || id(), createdAt: new Date(), updatedAt: new Date() };
-        store[table]?.set(record.id, record);
-        return record;
-      },
-    };
-  }
-
-  const store: Store = createEmptyStore();
-
-  function buildPrisma(s: Store) {
-    const tables = Object.keys(s);
-    const prisma: any = {
-      $transaction: (arg: any) => {
-        if (typeof arg === 'function') {
-          const tx: any = {};
-          for (const t of tables) { tx[t] = makeModel(s, t); }
-          return arg(tx);
-        }
-        return arg;
-      },
-      $disconnect: () => {},
-    };
-    for (const t of tables) { prisma[t] = makeModel(s, t); }
-    return prisma;
-  }
-
-  return { mockPrisma: buildPrisma(store), mockStore: store };
+  return (globalThis as any).__createInMemoryPrisma();
 });
 
 process.env.SEARCH_PROVIDER = 'mock';
@@ -292,6 +70,8 @@ vi.mock('bullmq', () => {
 // ---------------------------------------------------------------------------
 async function buildApp() {
   const app = Fastify();
+  // Global rate limiter (same as server.ts)
+  app.addHook('preHandler', apiRateLimiter);
   // Register error handler (same as server.ts)
   app.setErrorHandler((error: any, request: any, reply: any) => {
     if (error.name === 'ZodError') {
@@ -299,7 +79,7 @@ async function buildApp() {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Validation failed',
-          details: error
+          errors: error
         }
       });
     }
@@ -407,7 +187,7 @@ function seedClaim(store: Store, projectId: string, versionId: string, overrides
 let app: any;
 
 beforeEach(async () => {
-  for (const map of Object.values(mockStore)) { map.clear(); }
+  for (const map of Object.values(mockStore) as Map<string, any>[]) { map.clear(); }
   if (app) { await app.close(); }
   app = await buildApp();
 });
@@ -1051,6 +831,87 @@ describe('Additional Endpoints', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.payload);
     expect(body.status).toBe('ready');
+  });
+
+  it('returns rate limit headers on API responses', async () => {
+    const res = await app.inject({ method: 'GET', url: '/projects' });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['x-ratelimit-limit']).toBeDefined();
+    expect(res.headers['x-ratelimit-remaining']).toBeDefined();
+    expect(res.headers['x-ratelimit-reset']).toBeDefined();
+  });
+
+  it('returns 429 when rate limit exceeded', async () => {
+    _resetBucketsForTesting();
+
+    // Build a separate app with a strict rate limiter (max 3 per minute)
+    const strictApp = Fastify();
+    const strictLimiter = createRateLimiter({
+      max: 3,
+      windowMs: 60000,
+      keyPrefix: 'test',
+    });
+    strictApp.addHook('preHandler', strictLimiter);
+    strictApp.get('/test-rl', async () => ({ ok: true }));
+    await strictApp.ready();
+
+    try {
+      // First 3 requests should pass
+      for (let i = 0; i < 3; i++) {
+        const res = await strictApp.inject({
+          method: 'GET',
+          url: '/test-rl',
+          remoteAddress: '10.0.0.1',
+        });
+        expect(res.statusCode).toBe(200);
+        expect(Number(res.headers['x-ratelimit-remaining'])).toBe(2 - i);
+      }
+
+      // 4th request should be rate limited
+      const res = await strictApp.inject({
+        method: 'GET',
+        url: '/test-rl',
+        remoteAddress: '10.0.0.1',
+      });
+      expect(res.statusCode).toBe(429);
+      const body = JSON.parse(res.payload);
+      expect(body.error.code).toBe('RATE_LIMITED');
+      expect(Number(res.headers['x-ratelimit-remaining'])).toBe(0);
+    } finally {
+      await strictApp.close();
+    }
+  });
+
+  it('different IPs have independent rate limit buckets', async () => {
+    _resetBucketsForTesting();
+
+    const strictApp = Fastify();
+    const strictLimiter = createRateLimiter({
+      max: 1,
+      windowMs: 60000,
+      keyPrefix: 'test-ip',
+    });
+    strictApp.addHook('preHandler', strictLimiter);
+    strictApp.get('/test-rl-ip', async () => ({ ok: true }));
+    await strictApp.ready();
+
+    try {
+      // First IP uses its limit
+      const r1 = await strictApp.inject({ method: 'GET', url: '/test-rl-ip', remoteAddress: '10.0.0.1' });
+      expect(r1.statusCode).toBe(200);
+      expect(Number(r1.headers['x-ratelimit-remaining'])).toBe(0);
+
+      // Different IP should still pass
+      const r2 = await strictApp.inject({ method: 'GET', url: '/test-rl-ip', remoteAddress: '10.0.0.2' });
+      expect(r2.statusCode).toBe(200);
+      expect(Number(r2.headers['x-ratelimit-remaining'])).toBe(0);
+
+      // First IP blocked
+      const r3 = await strictApp.inject({ method: 'GET', url: '/test-rl-ip', remoteAddress: '10.0.0.1' });
+      expect(r3.statusCode).toBe(429);
+    } finally {
+      await strictApp.close();
+    }
   });
 
   it('GET /runs/:runId returns run status', async () => {

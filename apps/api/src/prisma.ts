@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 // Pool size is controlled via DATABASE_URL connection_limit parameter:
 //   postgresql://user:pass@host:port/db?connection_limit=10
@@ -8,4 +8,4 @@ const prisma = new PrismaClient({
 });
 
 export default prisma;
-export { prisma };
+export { prisma, Prisma };

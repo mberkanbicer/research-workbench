@@ -5,10 +5,11 @@
 import 'dotenv/config';
 import { prisma } from '../prisma.js';
 import { indexClaimEmbedding, indexEvidenceEmbedding } from '../services/embedding-index.js';
+import { logger } from '../utils/logger.js';
 
 async function main() {
   if (process.env.EMBEDDING_ENABLED !== 'true') {
-    console.error('Set EMBEDDING_ENABLED=true before running backfill.');
+    logger.error('Set EMBEDDING_ENABLED=true before running backfill.');
     process.exit(1);
   }
 
@@ -20,7 +21,7 @@ async function main() {
     : await prisma.researchProject.findMany({ select: { id: true, title: true } });
 
   if (projects.length === 0) {
-    console.log('No projects found.');
+    logger.info('No projects found.');
     return;
   }
 
@@ -28,7 +29,7 @@ async function main() {
   let evidenceCount = 0;
 
   for (const project of projects) {
-    console.log(`Backfilling: ${project.title} (${project.id})`);
+    logger.info('Backfilling embeddings', { projectId: project.id, title: project.title });
 
     const claims = await prisma.claim.findMany({ where: { projectId: project.id } });
     for (const claim of claims) {
@@ -46,12 +47,12 @@ async function main() {
   // Allow fire-and-forget indexing to settle
   await new Promise((r) => setTimeout(r, 2000));
 
-  console.log(`Queued indexing for ${claimCount} claims and ${evidenceCount} evidence items.`);
+  logger.info('Queued indexing', { claimCount, evidenceCount });
 }
 
 main()
   .catch((err) => {
-    console.error(err);
+    logger.error('Backfill failed', { error: (err as Error).message });
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());

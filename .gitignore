@@ -46,3 +46,12 @@ c.txt
 staging-*.log
 api.log
 web.log
+
+# Local task files
+.pi/
+
+# Agent tool directories
+.mimocode/
+.codex/
+.commandcode/
+.claude/

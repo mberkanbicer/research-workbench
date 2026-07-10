@@ -21,7 +21,12 @@ export function useRunEvents(runId: string | null, initialEvents: SSEEvent[] = [
       setActiveRunId(runId);
     }
     if (initialEvents.length > 0 && eventLog.length === 0) {
-      hydrateEvents(initialEvents);
+      // Ensure all events have an id
+      const eventsWithIds = initialEvents.map(e => ({
+        ...e,
+        id: e.id || crypto.randomUUID(),
+      }));
+      hydrateEvents(eventsWithIds);
     }
   }, [runId]);
 

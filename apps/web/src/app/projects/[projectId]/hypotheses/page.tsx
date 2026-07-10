@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useProject, useHypotheses, useCreateHypothesis, useUpdateHypothesis, useDeleteHypothesis } from "@/hooks/useApi";
 import { useState } from "react";
 import Pagination from "@/components/Pagination";
+import type { Hypothesis } from "@/hooks/useHypotheses";
 
 const PAGE_SIZE = 20;
 
@@ -27,7 +28,7 @@ export default function HypothesesPage() {
   const [newStatement, setNewStatement] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const hypotheses = hypothesesData?.data || [];
+  const hypotheses = (hypothesesData?.data || []) as Hypothesis[];
   const totalPages = Math.ceil(hypotheses.length / PAGE_SIZE);
   const paginatedHypotheses = hypotheses.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 

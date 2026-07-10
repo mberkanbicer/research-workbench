@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAnnotations, useCreateAnnotation, useDeleteAnnotation } from '@/hooks/useApi';
+import type { Annotation } from '@/hooks/useAnnotations';
 
 interface AnnotationsSectionProps {
   projectId: string;
@@ -16,7 +17,7 @@ export default function AnnotationsSection({ projectId, entityType, entityId }: 
   const [newContent, setNewContent] = useState('');
   const [isAdding, setIsAdding] = useState(false);
 
-  const annotations = annotationsData?.data || [];
+  const annotations = (annotationsData?.data || []) as Annotation[];
 
   const handleAdd = async () => {
     if (!newContent.trim()) return;

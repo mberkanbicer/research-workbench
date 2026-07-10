@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import cors from '@fastify/cors';
 import { FastifySSEPlugin } from 'fastify-sse-v2';
@@ -20,12 +21,27 @@ import { graphRoutes } from './routes/graph.js';
 import { annotationRoutes } from './routes/annotations.js';
 import { evaluationCriteriaRoutes } from './routes/evaluation-criteria.js';
 import { realtimeRoutes } from './routes/realtime.js';
+import { analyticsRoutes } from './routes/analytics.js';
+import { researchRoutes } from './routes/research.js';
+import { latexRoutes } from './routes/latex.js';
+import { collaborationWsRoutes } from './routes/collaboration-ws.js';
+import { latexSuggestionsRoutes } from './routes/latex-suggestions.js';
+import { overleafRoutes } from './routes/overleaf.js';
+import { documentPermissionsRoutes } from './routes/document-permissions.js';
+import { documentVersionsRoutes } from './routes/document-versions.js';
+import { documentCommentsRoutes } from './routes/document-comments.js';
+import { referencesRoutes } from './routes/references.js';
+import { templateMarketplaceRoutes } from './routes/template-marketplace.js';
+import { apiRateLimiter } from './middleware/rate-limit.js';
+import { logger } from './utils/logger.js';
+import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { AppError } from './utils/errors.js';
 
 // Start the BullMQ worker (side-effect import)
 import('./orchestrator/worker.js').then(() => {
-  console.log('[Worker] Worker module loaded');
+  logger.info('[Worker] Worker module loaded');
 }).catch(err => {
-  console.error('[Worker] Failed to load worker (non-fatal — runs continue via direct orchestration):', err.message);
+  logger.error('[Worker] Failed to load worker', { error: (err as Error).message });
 });
 
 dotenv.config({ path: '.env' });
@@ -44,25 +60,21 @@ fastify.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 });
 
-fastify.setErrorHandler((error, request, reply) => {
-  if (error.name === 'ZodError') {
-    return reply.status(400).send({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Validation failed',
-        details: error
-      }
-    });
-  }
+// Global rate limit hook — applies to all routes (auth routes get an additional
+// stricter auth-specific rate limiter via their own preHandler).
+fastify.addHook('preHandler', apiRateLimiter);
 
-  fastify.log.error(error);
-  reply.status(500).send({
-    error: {
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'An unexpected error occurred'
-    }
-  });
+// Request ID middleware — adds unique ID to every request for correlation
+fastify.addHook('onRequest', async (request) => {
+  request.id = crypto.randomUUID();
 });
+
+fastify.addHook('onSend', async (request, reply) => {
+  reply.header('X-Request-ID', request.id);
+});
+
+fastify.setErrorHandler(errorHandler);
+fastify.setNotFoundHandler(notFoundHandler);
 
 fastify.register(projectRoutes);
 fastify.register(modelRoutes);
@@ -82,6 +94,17 @@ fastify.register(graphRoutes);
 fastify.register(annotationRoutes);
 fastify.register(evaluationCriteriaRoutes);
 fastify.register(realtimeRoutes);
+fastify.register(analyticsRoutes);
+fastify.register(researchRoutes);
+fastify.register(latexRoutes);
+fastify.register(collaborationWsRoutes);
+fastify.register(latexSuggestionsRoutes);
+fastify.register(overleafRoutes);
+fastify.register(documentPermissionsRoutes);
+fastify.register(documentVersionsRoutes);
+fastify.register(documentCommentsRoutes);
+fastify.register(referencesRoutes);
+fastify.register(templateMarketplaceRoutes);
 
 fastify.get('/health', async () => {
   return { status: 'ok' };

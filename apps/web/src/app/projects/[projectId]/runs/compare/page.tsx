@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useRunComparison, useLatestRun } from '@/hooks/useApi';
 import { useState, useEffect } from 'react';
+import type { RunComparisonData } from '@/lib/types';
 
 function RunComparison() {
   const { projectId } = useParams() as { projectId: string };
@@ -17,11 +18,13 @@ function RunComparison() {
   // Collect all known run IDs from events
   useEffect(() => {
     if (latestRun?.data?.runId) {
-      setRunIds(prev => prev.includes(latestRun.data.runId) ? prev : [...prev, latestRun.data.runId]);
+      const runId = latestRun.data.runId;
+      setRunIds(prev => prev.includes(runId) ? prev : [...prev, runId]);
     }
   }, [latestRun]);
 
   const { data: comparison, isLoading } = useRunComparison(projectId, run1Id, run2Id);
+  const comparisonData = comparison?.data as RunComparisonData | undefined;
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms}ms`;
@@ -63,7 +66,7 @@ function RunComparison() {
         <div className="text-center py-12 text-gray-400">Select two runs to compare</div>
       ) : isLoading ? (
         <div className="text-center py-12 text-gray-400">Loading comparison...</div>
-      ) : comparison?.data ? (
+      ) : comparisonData ? (
         <div className="space-y-6">
           {/* Configuration Comparison */}
           <div className="border rounded-lg bg-white p-6">
@@ -75,8 +78,8 @@ function RunComparison() {
               {['loopMode', 'maxRounds', 'searchProvider'].map(key => (
                 <React.Fragment key={key}>
                   <div className="text-gray-500">{key}</div>
-                  <div>{String(comparison.data.run1.config[key] || 'N/A')}</div>
-                  <div>{String(comparison.data.run2.config[key] || 'N/A')}</div>
+                  <div>{String(comparisonData.run1.config?.[key] || 'N/A')}</div>
+                  <div>{String(comparisonData.run2.config?.[key] || 'N/A')}</div>
                 </React.Fragment>
               ))}
             </div>
@@ -90,11 +93,11 @@ function RunComparison() {
               <div className="font-medium">Run 1</div>
               <div className="font-medium">Run 2</div>
               {[
-                ['Duration', formatDuration(comparison.data.run1.metrics.durationMs), formatDuration(comparison.data.run2.metrics.durationMs)],
-                ['Iterations', comparison.data.run1.metrics.iterationCount, comparison.data.run2.metrics.iterationCount],
-                ['Phases Completed', comparison.data.run1.metrics.completedPhases, comparison.data.run2.metrics.completedPhases],
-                ['Phases Failed', comparison.data.run1.metrics.failedPhases, comparison.data.run2.metrics.failedPhases],
-                ['Stages Completed', comparison.data.run1.metrics.stagesCompleted, comparison.data.run2.metrics.stagesCompleted],
+                ['Duration', formatDuration(comparisonData.run1.metrics.durationMs), formatDuration(comparisonData.run2.metrics.durationMs)],
+                ['Iterations', comparisonData.run1.metrics.iterationCount, comparisonData.run2.metrics.iterationCount],
+                ['Phases Completed', comparisonData.run1.metrics.completedPhases, comparisonData.run2.metrics.completedPhases],
+                ['Phases Failed', comparisonData.run1.metrics.failedPhases, comparisonData.run2.metrics.failedPhases],
+                ['Stages Completed', comparisonData.run1.metrics.stagesCompleted, comparisonData.run2.metrics.stagesCompleted],
               ].map(([label, v1, v2]) => (
                 <React.Fragment key={label}>
                   <div className="text-gray-500">{label}</div>
@@ -113,10 +116,10 @@ function RunComparison() {
               <div className="font-medium">Run 1</div>
               <div className="font-medium">Run 2</div>
               {[
-                ['Total', comparison.data.run1.claims.total, comparison.data.run2.claims.total],
-                ['Supported', comparison.data.run1.claims.supported, comparison.data.run2.claims.supported],
-                ['Contradicted', comparison.data.run1.claims.contradicted, comparison.data.run2.claims.contradicted],
-                ['Unverified', comparison.data.run1.claims.unverified, comparison.data.run2.claims.unverified],
+                ['Total', comparisonData.run1.claims.total, comparisonData.run2.claims.total],
+                ['Supported', comparisonData.run1.claims.supported, comparisonData.run2.claims.supported],
+                ['Contradicted', comparisonData.run1.claims.contradicted, comparisonData.run2.claims.contradicted],
+                ['Unverified', comparisonData.run1.claims.unverified, comparisonData.run2.claims.unverified],
               ].map(([label, v1, v2]) => (
                 <React.Fragment key={label}>
                   <div className="text-gray-500">{label}</div>
@@ -135,10 +138,10 @@ function RunComparison() {
               <div className="font-medium">Run 1</div>
               <div className="font-medium">Run 2</div>
               {[
-                ['Total', comparison.data.run1.evidence.total, comparison.data.run2.evidence.total],
-                ['Accepted', comparison.data.run1.evidence.accepted, comparison.data.run2.evidence.accepted],
-                ['Rejected', comparison.data.run1.evidence.rejected, comparison.data.run2.evidence.rejected],
-                ['Counter', comparison.data.run1.evidence.counter, comparison.data.run2.evidence.counter],
+                ['Total', comparisonData.run1.evidence.total, comparisonData.run2.evidence.total],
+                ['Accepted', comparisonData.run1.evidence.accepted, comparisonData.run2.evidence.accepted],
+                ['Rejected', comparisonData.run1.evidence.rejected, comparisonData.run2.evidence.rejected],
+                ['Counter', comparisonData.run1.evidence.counter, comparisonData.run2.evidence.counter],
               ].map(([label, v1, v2]) => (
                 <React.Fragment key={label}>
                   <div className="text-gray-500">{label}</div>
@@ -157,11 +160,11 @@ function RunComparison() {
               <div className="font-medium">Run 1</div>
               <div className="font-medium">Run 2</div>
               <div className="text-gray-500">Vote</div>
-              <div>{comparison.data.run1.decision.vote || 'N/A'}</div>
-              <div>{comparison.data.run2.decision.vote || 'N/A'}</div>
+              <div>{comparisonData.run1.decision.vote || 'N/A'}</div>
+              <div>{comparisonData.run2.decision.vote || 'N/A'}</div>
               <div className="text-gray-500">Status</div>
-              <div>{comparison.data.run1.decision.decisionStatus || 'N/A'}</div>
-              <div>{comparison.data.run2.decision.decisionStatus || 'N/A'}</div>
+              <div>{comparisonData.run1.decision.decisionStatus || 'N/A'}</div>
+              <div>{comparisonData.run2.decision.decisionStatus || 'N/A'}</div>
             </div>
           </div>
         </div>

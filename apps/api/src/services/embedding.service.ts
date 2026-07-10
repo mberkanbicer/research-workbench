@@ -7,6 +7,8 @@
 
 import { prisma } from '../prisma.js';
 import { logger } from '../utils/logger.js';
+import { EMBEDDING_INPUT_MAX_CHARS } from '../config/constants.js';
+
 const EMBEDDING_DIMENSION = 768;
 
 export type SemanticSearchResult = {
@@ -189,7 +191,7 @@ export class EmbeddingService {
       },
       body: JSON.stringify({
         model,
-        input: text.slice(0, 8000),
+        input: text.slice(0, EMBEDDING_INPUT_MAX_CHARS),
         dimensions: EMBEDDING_DIMENSION,
       }),
     });

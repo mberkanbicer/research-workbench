@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePresence, useUpdatePresence } from '@/hooks/useApi';
 import { useParams, usePathname } from 'next/navigation';
+import type { PresenceData } from '@/hooks/usePresence';
 
 interface PresenceIndicatorProps {
   userName?: string;
@@ -25,7 +26,7 @@ export default function PresenceIndicator({ userName = 'You' }: PresenceIndicato
     return () => clearInterval(interval);
   }, [projectId, pathname, userName]);
 
-  const presence = presenceData?.data?.presence || [];
+  const presence = (presenceData?.data?.presence || []) as PresenceData[];
   const otherUsers = presence.filter((p: any) => p.userName !== userName);
 
   if (otherUsers.length === 0) return null;

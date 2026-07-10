@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLiteratureReviews, useCreateLiteratureReview, useModels } from '@/hooks/useApi';
 import { useState } from 'react';
+import type { LiteratureReview } from '@/hooks/useLiterature';
 
 function LiteratureReviews() {
   const { projectId } = useParams() as { projectId: string };
@@ -15,7 +16,7 @@ function LiteratureReviews() {
   const [researchQuestion, setResearchQuestion] = useState('');
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
 
-  const reviews = reviewsData?.data || [];
+  const reviews = (reviewsData?.data || []) as LiteratureReview[];
   const models = modelsData?.data || [];
 
   const handleCreate = async () => {

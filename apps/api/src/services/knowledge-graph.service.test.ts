@@ -35,10 +35,10 @@ describe('KnowledgeGraphService', () => {
     it('creates an edge when none exists', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
 
-      await kg.addEdge('claim', 'c1', 'evidence', 'e1', 'supports');
+      await kg.addEdge('p1', 'claim', 'c1', 'evidence', 'e1', 'supports');
 
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: { fromType: 'claim', fromId: 'c1', toType: 'evidence', toId: 'e1', relation: 'supports' },
+        data: { projectId: 'p1', fromType: 'claim', fromId: 'c1', toType: 'evidence', toId: 'e1', relation: 'supports' },
       });
     });
 
@@ -48,97 +48,98 @@ describe('KnowledgeGraphService', () => {
       mockPrisma.knowledgeEdge.create.mockRejectedValue(error);
 
       // Should not throw
-      await kg.addEdge('claim', 'c1', 'evidence', 'e1', 'supports');
+      await kg.addEdge('p1', 'claim', 'c1', 'evidence', 'e1', 'supports');
     });
 
     it('logs and swallows non-duplicate errors', async () => {
       mockPrisma.knowledgeEdge.create.mockRejectedValue(new Error('DB error'));
 
       // Should not throw
-      await kg.addEdge('claim', 'c1', 'evidence', 'e1', 'supports');
+      await kg.addEdge('p1', 'claim', 'c1', 'evidence', 'e1', 'supports');
     });
   });
 
   describe('link methods', () => {
     it('linkEvidenceToClaim creates supports edge', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkEvidenceToClaim('e1', 'c1', false);
+      await kg.linkEvidenceToClaim('p1', 'e1', 'c1', false);
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'supports' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'supports' }),
       });
     });
 
     it('linkEvidenceToClaim creates contradicts edge for counter evidence', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkEvidenceToClaim('e1', 'c1', true);
+      await kg.linkEvidenceToClaim('p1', 'e1', 'c1', true);
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'contradicts' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'contradicts' }),
       });
     });
 
     it('linkCritiqueToTarget creates critiques edge', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkCritiqueToTarget('cr1', 'claim', 'c1');
+      await kg.linkCritiqueToTarget('p1', 'cr1', 'claim', 'c1');
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'critiques' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'critiques' }),
       });
     });
 
     it('linkVersionSupersession creates supersedes edge', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkVersionSupersession('v2', 'v1');
+      await kg.linkVersionSupersession('p1', 'v2', 'v1');
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'supersedes' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'supersedes' }),
       });
     });
 
     it('linkDecisionToVersion creates references edge', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkDecisionToVersion('d1', 'v1');
+      await kg.linkDecisionToVersion('p1', 'd1', 'v1');
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'references' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'references' }),
       });
     });
 
     it('linkReviewToClaim creates supports edge when accepted', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkReviewToClaim('r1', 'c1', true);
+      await kg.linkReviewToClaim('p1', 'r1', 'c1', true);
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'supports' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'supports' }),
       });
     });
 
     it('linkReviewToClaim creates contradicts edge when rejected', async () => {
       mockPrisma.knowledgeEdge.create.mockResolvedValue({ id: '1' });
-      await kg.linkReviewToClaim('r1', 'c1', false);
+      await kg.linkReviewToClaim('p1', 'r1', 'c1', false);
       expect(mockPrisma.knowledgeEdge.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ relation: 'contradicts' }),
+        data: expect.objectContaining({ projectId: 'p1', relation: 'contradicts' }),
       });
     });
   });
 
   describe('query methods', () => {
-    it('getOutgoingEdges queries by fromType and fromId', async () => {
+    it('getOutgoingEdges queries by projectId, fromType and fromId', async () => {
       mockPrisma.knowledgeEdge.findMany.mockResolvedValue([]);
-      await kg.getOutgoingEdges('claim', 'c1');
+      await kg.getOutgoingEdges('p1', 'claim', 'c1');
       expect(mockPrisma.knowledgeEdge.findMany).toHaveBeenCalledWith({
-        where: { fromType: 'claim', fromId: 'c1' },
+        where: { projectId: 'p1', fromType: 'claim', fromId: 'c1' },
       });
     });
 
-    it('getIncomingEdges queries by toType and toId', async () => {
+    it('getIncomingEdges queries by projectId, toType and toId', async () => {
       mockPrisma.knowledgeEdge.findMany.mockResolvedValue([]);
-      await kg.getIncomingEdges('evidence', 'e1');
+      await kg.getIncomingEdges('p1', 'evidence', 'e1');
       expect(mockPrisma.knowledgeEdge.findMany).toHaveBeenCalledWith({
-        where: { toType: 'evidence', toId: 'e1' },
+        where: { projectId: 'p1', toType: 'evidence', toId: 'e1' },
       });
     });
 
-    it('getClaimGraph queries edges where claim is source or target', async () => {
+    it('getClaimGraph queries edges where claim is source or target within a project', async () => {
       mockPrisma.knowledgeEdge.findMany.mockResolvedValue([]);
-      await kg.getClaimGraph('c1');
+      await kg.getClaimGraph('p1', 'c1');
       expect(mockPrisma.knowledgeEdge.findMany).toHaveBeenCalledWith({
         where: {
+          projectId: 'p1',
           OR: [
             { fromId: 'c1', fromType: 'claim' },
             { toId: 'c1', toType: 'claim' },
@@ -149,25 +150,14 @@ describe('KnowledgeGraphService', () => {
   });
 
   describe('getProjectGraph', () => {
-    it('returns edges for all project entities with pagination', async () => {
-      mockPrisma.claim.findMany.mockResolvedValue([{ id: 'c1' }]);
-      mockPrisma.evidence.findMany.mockResolvedValue([{ id: 'e1' }]);
-      mockPrisma.critique.findMany.mockResolvedValue([]);
-      mockPrisma.modelReview.findMany.mockResolvedValue([]);
-      mockPrisma.decisionRecord.findMany.mockResolvedValue([]);
-      mockPrisma.ideaVersion.findMany.mockResolvedValue([]);
+    it('returns edges for a project with pagination using projectId', async () => {
       mockPrisma.knowledgeEdge.findMany.mockResolvedValue([{ id: 'edge1' }]);
 
       const result = await kg.getProjectGraph('p1', 50, 10);
 
       expect(result).toEqual([{ id: 'edge1' }]);
       expect(mockPrisma.knowledgeEdge.findMany).toHaveBeenCalledWith({
-        where: {
-          OR: [
-            { fromId: { in: ['c1', 'e1'] } },
-            { toId: { in: ['c1', 'e1'] } },
-          ],
-        },
+        where: { projectId: 'p1' },
         take: 50,
         skip: 10,
       });

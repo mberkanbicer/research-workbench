@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useProjects, useDeleteProject, useArchiveProject, useExport, usePortfolio } from "@/hooks/useApi";
 import { apiFetch, API_BASE } from "@/lib/apiFetch";
+import type { PortfolioProjectStats } from "@/lib/types";
 
 // Prevent static prerendering — this page uses client-side data fetching
 export const dynamic = 'force-dynamic';
@@ -94,21 +95,22 @@ export default function ProjectsPage() {
               <p className="text-gray-600 text-sm mb-4 flex-1 line-clamp-3">{project.goal}</p>
 
               {/* Portfolio Stats */}
-              {portfolioData?.data && (() => {
-                const stats = portfolioData.data.find((p: any) => p.id === project.id)?.stats;
-                if (!stats) return null;
+              {portfolioData?.data ? (() => {
+                const portfolio = portfolioData.data as PortfolioProjectStats[];
+                const projectStats = portfolio.find((p) => p.id === project.id)?.stats;
+                if (!projectStats) return null;
                 return (
                   <div className="flex gap-3 text-xs text-gray-500 mb-4">
-                    <span>{stats.totalClaims} claims</span>
+                    <span>{projectStats.totalClaims} claims</span>
                     <span>•</span>
-                    <span>{stats.totalEvidence} evidence</span>
+                    <span>{projectStats.totalEvidence} evidence</span>
                     <span>•</span>
-                    <span className={stats.healthScore >= 70 ? 'text-green-600' : stats.healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}>
-                      {stats.healthScore}% health
+                    <span className={projectStats.healthScore >= 70 ? 'text-green-600' : projectStats.healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}>
+                      {projectStats.healthScore}% health
                     </span>
                   </div>
                 );
-              })()}
+              })() : null}
               
               <div className="pt-4 border-t border-gray-50 mt-auto space-y-3">
                 <Link href={`/projects/${project.id}`} className="block w-full text-center bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all">

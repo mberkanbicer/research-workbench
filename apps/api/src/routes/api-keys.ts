@@ -3,15 +3,20 @@ import { z } from 'zod';
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { authMiddleware } from './auth.js';
+import { logger } from '../utils/logger.js';
 
 // ─── Encryption ────────────────────────────────────────────────────────────
-// Uses a server-side encryption key from env (fallback: derived from OPENROUTER_API_KEY)
+// Uses a server-side encryption key from env.
 // Each key is encrypted at rest with AES-256-GCM.
 
 function getEncryptionKey(): Buffer {
-  const raw = process.env.API_KEY_ENCRYPTION_KEY || process.env.OPENROUTER_API_KEY || 'default-insecure-dev-key-change-in-production-!!';
+  const raw = process.env.API_KEY_ENCRYPTION_KEY;
+  if (!raw) {
+    throw new Error('API_KEY_ENCRYPTION_KEY environment variable is required. Generate one with: openssl rand -hex 32');
+  }
   // Derive a 32-byte key via SHA-256
-  return createHash('sha256').update(raw).digest();
+  const key = createHash('sha256').update(raw).digest();
+  return key;
 }
 
 function encryptApiKey(plaintext: string): { encrypted: string; iv: string; tag: string } {
@@ -173,8 +178,6 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
         keyPrefix: key.keyPrefix,
         provider: key.provider,
         label: key.label,
-        // Decrypted key available if caller needs to test against a model
-        apiKey: plaintextKey,
       },
     };
   });

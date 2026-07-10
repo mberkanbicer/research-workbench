@@ -125,14 +125,7 @@ export class ProjectRepository {
       await tx.sourceEmbedding.deleteMany({ where: { projectId: id } });
       await tx.modelCall.deleteMany({ where: { projectId: id } });
       await tx.userFeedback.deleteMany({ where: { projectId: id } });
-      await tx.knowledgeEdge.deleteMany({
-        where: {
-          OR: [
-            { fromType: 'project', fromId: id },
-            { toType: 'project', toId: id },
-          ],
-        },
-      });
+      await tx.knowledgeEdge.deleteMany({ where: { projectId: id } });
       // RunStage has no projectId — derive runIds from RunEvent
       const runIds = (await tx.runEvent.findMany({ where: { projectId: id }, select: { runId: true } })).map(r => r.runId);
       if (runIds.length > 0) {

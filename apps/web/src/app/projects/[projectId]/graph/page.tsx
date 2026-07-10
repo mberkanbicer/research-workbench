@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCitationGraph, useCalibration, useDatasetExport } from '@/hooks/useApi';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import type { DatasetExport, CalibrationData, CitationGraphData, CitationGraphEdge } from '@/hooks/useGraph';
 
 type GraphNode = {
   id: string;
@@ -22,13 +23,7 @@ type GraphNode = {
   vy?: number;
 };
 
-type GraphEdge = {
-  source: string;
-  target: string;
-  relation: string;
-  sourceType: string;
-  targetType: string;
-};
+type GraphEdge = CitationGraphEdge;
 
 const NODE_COLORS: Record<string, string> = {
   claim: '#3b82f6',
@@ -48,9 +43,12 @@ const NODE_SHAPES: Record<string, string> = {
 
 function CitationGraph() {
   const { projectId } = useParams() as { projectId: string };
-  const { data: graphData, isLoading } = useCitationGraph(projectId);
-  const { data: calibrationData } = useCalibration(projectId);
-  const { data: datasetData } = useDatasetExport(projectId);
+  const { data: graphDataRaw, isLoading } = useCitationGraph(projectId);
+  const graphData = graphDataRaw ? { data: graphDataRaw.data as CitationGraphData } : undefined;
+  const { data: calibrationDataRaw } = useCalibration(projectId);
+  const calibrationData = calibrationDataRaw ? { data: calibrationDataRaw.data as CalibrationData } : undefined;
+  const { data: datasetDataRaw } = useDatasetExport(projectId);
+  const datasetData = datasetDataRaw ? { data: datasetDataRaw.data as DatasetExport } : undefined;
   const svgRef = useRef<SVGSVGElement>(null);
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
@@ -245,7 +243,7 @@ function CitationGraph() {
             <h2 className="font-semibold mb-4">Confidence Calibration</h2>
             <p className="text-sm text-gray-600 mb-4">How well do confidence scores predict actual claim support?</p>
             <div className="space-y-3">
-              {calibrationData.data.calibrationBuckets.map((b: any, i: number) => (
+              {calibrationData.data.calibrationBuckets?.map((b: any, i: number) => (
                 <div key={i} className="flex items-center gap-3">
                   <span className="text-xs w-16 text-right">{b.range}</span>
                   <div className="flex-1 h-6 bg-gray-100 rounded overflow-hidden relative">
@@ -264,7 +262,7 @@ function CitationGraph() {
           <div className="border rounded-lg bg-white p-6">
             <h2 className="font-semibold mb-4">Summary Statistics</h2>
             <div className="space-y-3">
-              {Object.entries(calibrationData.data.summary).map(([key, val]) => (
+              {calibrationData.data.summary && Object.entries(calibrationData.data.summary).map(([key, val]) => (
                 <div key={key} className="flex justify-between text-sm">
                   <span className="text-gray-600">{key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</span>
                   <span className="font-medium">{typeof val === 'number' && val < 1 && val > 0 ? `${(val * 100).toFixed(0)}%` : String(val)}</span>

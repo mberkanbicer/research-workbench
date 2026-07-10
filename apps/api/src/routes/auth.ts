@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { authRateLimiter } from '../middleware/rate-limit.js';
+import { SESSION_EXPIRY_MS } from '../config/constants.js';
 
 // ─── Schemas ───────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       data: {
         userId: user.id,
         token,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        expiresAt: new Date(Date.now() + SESSION_EXPIRY_MS),
       },
     });
 
@@ -166,7 +167,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       data: {
         userId: user.id,
         token,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + SESSION_EXPIRY_MS),
       },
     });
 
@@ -189,5 +190,21 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   fastify.get('/auth/me', { preHandler: authMiddleware }, async (request) => {
     return { data: { user: request.user } };
+  });
+
+  // Look up a user by email (for permissions sharing)
+  fastify.get('/auth/lookup', { preHandler: authMiddleware }, async (request, reply) => {
+    const { email } = request.query as { email?: string };
+    if (!email) {
+      return reply.status(400).send({ error: { code: 'BAD_REQUEST', message: 'email query parameter required' } });
+    }
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      select: { id: true, email: true, name: true },
+    });
+    if (!user) {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'User not found' } });
+    }
+    return { data: user };
   });
 }

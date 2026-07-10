@@ -7,6 +7,7 @@ import { useRunStore } from '@/store/runStore';
 // ─── Original useSSE for run events (used by useRunEvents) ──────────────────
 
 export interface SSEEvent {
+  id?: string;
   type: string;
   payload?: any;
   createdAt?: string;
@@ -40,7 +41,11 @@ export function useSSE(runId: string | null, options: UseRunSSEOptions = {}) {
       try {
         const event = JSON.parse(e.data) as SSEEvent;
         if (options.syncToStore) {
-          addEvent(event);
+          // Ensure event has an id
+          addEvent({
+            ...event,
+            id: event.id || crypto.randomUUID(),
+          });
         }
       } catch {}
     };

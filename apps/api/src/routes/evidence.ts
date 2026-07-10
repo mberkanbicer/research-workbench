@@ -486,10 +486,10 @@ export async function evidenceRoutes(fastify: FastifyInstance) {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Get linked claims
-    const linkedClaims = await prisma.claim.findMany({
-      where: { evidence: { some: { id: evidenceId } } },
-    });
+    // Get linked claims — evidence links to claim via claimId
+    const linkedClaims = evidence.claimId
+      ? await prisma.claim.findMany({ where: { id: evidence.claimId } })
+      : [];
 
     // Get decisions that reference this evidence
     const decisions = await prisma.decisionRecord.findMany({
@@ -502,7 +502,7 @@ export async function evidenceRoutes(fastify: FastifyInstance) {
     });
 
     // Build provenance chain
-    const chain = [
+    const chain: Array<{ step: string; timestamp: Date | null; description: string; details: Record<string, unknown> }> = [
       {
         step: 'discovery',
         timestamp: evidence.createdAt,

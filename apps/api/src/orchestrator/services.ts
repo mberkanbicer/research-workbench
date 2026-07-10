@@ -1,4 +1,5 @@
 import { ModelGateway, SearchProviderAdapter } from '@repo/model-gateway';
+import { DEFAULT_TOKEN_BUDGET } from '../config/constants.js';
 import {
   ClaimExtractionOutputSchema,
   type ClaimExtractionOutput,
@@ -50,7 +51,6 @@ export class DeliberationServices {
     queryText?: string,
   ): Promise<void> {
     try {
-      const defaultBudget = 32000;
       let retrievalReason: Record<string, unknown> = { task: taskLabel };
 
       if (process.env.EMBEDDING_ENABLED === 'true' && queryText?.trim()) {
@@ -69,7 +69,7 @@ export class DeliberationServices {
         }
       }
 
-      await manifestService.record(projectId, modelId, defaultBudget, context, undefined, retrievalReason);
+      await manifestService.record(projectId, modelId, DEFAULT_TOKEN_BUDGET, context, undefined, retrievalReason);
     } catch (err) {
       logger.warn('Failed to record ContextManifest', { error: (err as Error).message });
     }

@@ -1,17 +1,21 @@
 'use client';
 
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useProject, useClaims, useStartRun, useExport, useExtractClaims, useRetryRun, useLatestRun, useUpdateProject, useUpdateClaim, useSearchEvidence, useSearchCounterEvidence } from "@/hooks/useApi";
+import { phaseLabels } from "@/lib/eventLabels";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { apiFetch, API_BASE } from "@/lib/apiFetch";
 import AddEvidenceModal from "@/components/AddEvidenceModal";
 import { ModelSelector } from "@/components/ModelSelector";
+import ProjectHeader from "@/components/ProjectHeader";
+import ProjectStatsGrid from "@/components/ProjectStatsGrid";
+import RunTimeline from "@/components/RunTimeline";
+import ProjectNavLinks from "@/components/ProjectNavLinks";
 import { useRunEvents } from "@/hooks/useRunEvents";
 import { useModelSelectionStore } from "@/store/modelSelectionStore";
 import { useInspectorStore } from "@/store/inspectorStore";
 import { useUIStore } from "@/store/uiStore";
-import PresenceIndicator from "@/components/PresenceIndicator";
 
 export default function ProjectDashboard() {
   const { projectId } = useParams() as { projectId: string };
@@ -39,141 +43,27 @@ export default function ProjectDashboard() {
   const openInspector = useInspectorStore((s) => s.openInspector);
   const setRunInProgress = useUIStore((s) => s.setRunInProgress);
   const isRunInProgress = useUIStore((s) => s.isRunInProgress);
-  const [isEditingProject, setIsEditingProject] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editGoal, setEditGoal] = useState('');
   const updateProject = useUpdateProject();
   const updateClaim = useUpdateClaim();
-  const timelineEndRef = useRef<HTMLDivElement>(null);
-
-  const phaseLabels: Record<string, string> = {
-    'phase.extraction.started': 'Extracting Claims',
-    'phase.evidence_discovery.started': 'Searching for Evidence',
-    'phase.evidence_assessment.started': 'Assessing Evidence',
-    'phase.review.started': 'Running Model Reviews',
-    'phase.critique.started': 'Cross-Critiquing Reviews',
-    'phase.critique_response.started': 'Responding to Critiques',
-    'phase.revision.started': 'Revising Idea',
-    'phase.consensus.started': 'Building Consensus',
-    'phase.gap_detection.started': 'Detecting Evidence Gaps',
-    'phase.gap_detection.completed': 'Gap Analysis Done',
-    'phase.gap_detection.failed': 'Gap Detection Failed',
-    'phase.goal_evaluation.started': 'Evaluating Goal Achievement',
-    'phase.goal_evaluation.completed': 'Goal Evaluation Done',
-    'phase.goal_evaluation.failed': 'Goal Evaluation Failed',
-    'phase.extraction.completed': 'Claims Extracted',
-    'phase.evidence_discovery.completed': 'Evidence Discovery Done',
-    'phase.evidence_assessment.completed': 'Assessment Finished',
-    'phase.review.completed': 'Reviews Collected',
-    'phase.critique.completed': 'Critiques Complete',
-    'phase.critique_response.completed': 'Critique Responses Done',
-    'phase.revision.completed': 'Idea Revised',
-    'phase.consensus.completed': 'Consensus Reached',
-    'phase.adversarial_probe.started': 'Running Adversarial Probe',
-    'phase.adversarial_probe.completed': 'Adversarial Probe Done',
-    'phase.adversarial_probe.claim_probed': 'Claim Probed',
-    'phase.consensus.evidence_gap_noted': 'Evidence Gap (Not Blocking)',
-    'phase.consensus.evidence_floor_failed': 'Evidence Floor Failed (Blocked)',
-    'phase.extraction.failed': 'Extraction Failed',
-    'phase.discovery.failed': 'Discovery Failed',
-    'phase.assessment.failed': 'Assessment Failed',
-    'phase.review.failed': 'Review Failed',
-    'phase.critique.failed': 'Critique Failed',
-    'phase.critique_response.failed': 'Critique Response Failed',
-    'phase.revision.failed': 'Revision Failed',
-    'phase.consensus.failed': 'Consensus Failed',
-    'critique.created': 'New Critique',
-    'critique.responded': 'Critique Response',
-    'idea.revised': 'Idea Revised',
-    'idea.version_advanced': 'Version Advanced',
-    'review.context_requested': 'Model Requested More Context',
-    'iteration.started': 'Iteration Started',
-    'iteration.completed': 'Iteration Completed',
-    'iteration.failed': 'Iteration Failed',
-    'goal.not_achieved': 'Goal Not Yet Achieved',
-  };
-
-  const eventMeta: Record<string, { icon: string; color: string }> = {
-    'run.started': { icon: '\u25B6', color: 'text-emerald-500' },
-    'run.completed': { icon: '\u2714', color: 'text-emerald-500' },
-    'run.failed': { icon: '\u2718', color: 'text-red-500' },
-    'run.cancelled': { icon: '\u25A0', color: 'text-gray-400' },
-    'iteration.started': { icon: '\u21BB', color: 'text-violet-500' },
-    'iteration.completed': { icon: '\u2714', color: 'text-violet-400' },
-    'iteration.failed': { icon: '\u2718', color: 'text-red-500' },
-    'goal.not_achieved': { icon: '\u25B3', color: 'text-amber-500' },
-    'phase.consensus.evidence_gap_noted': { icon: '\u26A0', color: 'text-amber-500' },
-    'phase.consensus.evidence_floor_failed': { icon: '\u2718', color: 'text-red-500' },
-    'error': { icon: '\u26A0', color: 'text-red-400' },
-  };
-
-  const getEventIcon = (type: string) => {
-    if (eventMeta[type]) return eventMeta[type];
-    if (type.endsWith('.started')) return { icon: '\u25CB', color: 'text-sky-500' };
-    if (type.endsWith('.completed')) return { icon: '\u25CF', color: 'text-emerald-500' };
-    if (type.endsWith('.failed')) return { icon: '\u2718', color: 'text-red-500' };
-    return { icon: '\u2022', color: 'text-gray-400' };
-  };
-
-  const getEventDescription = (e: any): string | null => {
-    const p = e.payload || {};
-    if (e.type === 'phase.extraction.completed' && p.count != null) return `Extracted ${p.count} claim${p.count !== 1 ? 's' : ''} from the idea`;
-    if (e.type === 'phase.evidence_discovery.started' && p.claimCount) return `Searching for evidence across ${p.claimCount} claim${p.claimCount !== 1 ? 's' : ''}`;
-    if (e.type === 'phase.evidence_discovery.completed' && p.count != null) return `Found ${p.count} piece${p.count !== 1 ? 's' : ''} of evidence`;
-    if (e.type === 'phase.evidence_assessment.started' && p.evidenceCount) return `Evaluating ${p.evidenceCount} evidence item${p.evidenceCount !== 1 ? 's' : ''}`;
-    if (e.type === 'phase.evidence_assessment.completed' && p.count != null) return `Assessed ${p.count} evidence item${p.count !== 1 ? 's' : ''}`;
-    if (e.type === 'phase.review.started' && p.modelCount) return `${p.modelCount} model${p.modelCount !== 1 ? 's' : ''} reviewing independently`;
-    if (e.type === 'phase.review.completed' && p.count != null) return `${p.count} review${p.count !== 1 ? 's' : ''} collected`;
-    if (e.type === 'phase.critique.started' && p.modelCount) return `${p.modelCount} model${p.modelCount !== 1 ? 's' : ''} cross-examining`;
-    if (e.type === 'phase.critique.completed' && p.count != null) return `${p.count} critique${p.count !== 1 ? 's' : ''} registered`;
-    if (e.type === 'phase.critique_response.started' && p.critiqueCount) return `Responding to ${p.critiqueCount} critique${p.critiqueCount !== 1 ? 's' : ''}`;
-    if (e.type === 'phase.critique_response.completed' && p.count != null) return `${p.count} response${p.count !== 1 ? 's' : ''} recorded`;
-    if (e.type === 'phase.consensus.completed' && p.vote) return `Consensus: ${p.vote.replace(/_/g, ' ')}`;
-    if (e.type === 'phase.consensus.evidence_gap_noted') return `Evidence gap (${p.supportRatio || 0}% coverage) — not blocking`;
-    if (e.type === 'phase.consensus.evidence_floor_failed') return `Evidence quality floor blocked — insufficient accepted evidence`;
-    if (e.type === 'idea.version_advanced' && p.round) return `Idea advanced to v${p.round + 1}`;
-    if (e.type === 'critique.created') return `New critique raised`;
-    if (e.type === 'critique.responded' && p.verdict) return `Critique ${p.verdict}`;
-    if (e.type === 'review.context_requested') return `Model requested additional context`;
-    if (e.type === 'run.completed' && p.outcome) return p.outcome === 'success' ? 'Run finished successfully' : `Run ended: ${p.outcome.replace(/_/g, ' ')}`;
-    if (e.type === 'phase.gap_detection.completed' && p.gapCount != null) return `Found ${p.gapCount} gap${p.gapCount !== 1 ? 's' : ''} (${p.criticalGapCount || 0} critical) — evidence strength: ${p.overallStrength || 'unknown'}`;
-    if (e.type === 'phase.goal_evaluation.completed') return p.goalAchieved ? `Goal achieved (${p.achievementLevel || 'confirmed'})` : `Goal not achieved: ${p.reason || 'see details'}`;
-    if (e.type === 'goal.not_achieved' && p.achievementLevel) return `Achievement level: ${p.achievementLevel.replace(/_/g, ' ')}${p.missingAspects?.length ? ' — missing: ' + p.missingAspects.slice(0, 2).join(', ') : ''}`;
-    if (e.type === 'iteration.started' && p.iteration && p.maxRounds) return `Iteration ${p.iteration} of ${p.maxRounds}`;
-    if (e.type === 'iteration.completed' && p.iteration) return p.revisionGenerated ? `Iteration ${p.iteration} done — new idea version generated` : p.maxRoundsReached ? 'Max iterations reached' : `Iteration ${p.iteration} done`;
-    if (e.type === 'round.started' && p.round) return `Round ${p.round} begins`;
-    if (e.type === 'round.completed' && p.round) return `Round ${p.round} complete`;
-    if (e.type === 'run.failed' && p.error) return p.error;
-    if (e.type === 'run.cancelled') return 'Run was cancelled by user';
-    if (e.type === 'error' && p.message) return p.message;
-    if (e.type === 'run.started') return 'Deliberation pipeline started';
-    return null;
-  };
-
-  const formatTime = (ts: string | undefined) => {
-    if (!ts) return '';
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
 
   useEffect(() => {
     if (startRun.data?.data?.runId) {
       setActiveRunId(startRun.data.data.runId);
       return;
     }
-    if (latestRun?.runId && !activeRunId) {
-      setActiveRunId(latestRun.runId);
+    if (latestRun?.data?.runId && !activeRunId) {
+      setActiveRunId(latestRun.data.runId);
     }
   }, [startRun.data?.data?.runId, latestRun, activeRunId]);
 
-  const initialRunEvents = (latestRun?.events || []).map((e: any) => ({
+  const initialRunEvents = (latestRun?.data?.events || []).map((e: any) => ({
     id: e.id || crypto.randomUUID(),
     type: e.type,
     payload: e.payload ?? e,
     createdAt: e.createdAt,
   }));
 
-  const { events, connectionStatus } = useRunEvents(activeRunId, initialRunEvents);
+  const { events } = useRunEvents(activeRunId, initialRunEvents);
 
   const isRunLive = !events.some(
     e => e.type === 'run.completed' || e.type === 'run.failed' || e.type === 'run.cancelled'
@@ -185,10 +75,6 @@ export default function ProjectDashboard() {
     );
     setRunInProgress(live);
   }, [events, setRunInProgress]);
-
-  useEffect(() => {
-    timelineEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [events]);
 
   if (isLoading) return <div className="p-8">Loading project...</div>;
 
@@ -204,92 +90,30 @@ export default function ProjectDashboard() {
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
-      <header className="flex flex-col md:flex-row justify-between items-start gap-4 bg-white p-6 md:p-10 rounded-3xl border border-gray-100 shadow-sm">
-        <div className="flex-1 w-full">
-          {isEditingProject ? (
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={editTitle}
-                onChange={e => setEditTitle(e.target.value)}
-                className="w-full text-3xl font-extrabold text-black tracking-tight bg-gray-50 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <textarea
-                value={editGoal}
-                onChange={e => setEditGoal(e.target.value)}
-                rows={3}
-                className="w-full text-gray-500 text-lg leading-relaxed bg-gray-50 border rounded-lg px-3 py-2 resize-none focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    updateProject.mutate({ projectId, data: { title: editTitle, goal: editGoal } });
-                    setIsEditingProject(false);
-                  }}
-                  disabled={updateProject.isPending}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {updateProject.isPending ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  onClick={() => setIsEditingProject(false)}
-                  className="bg-gray-100 text-gray-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="group flex items-start gap-2">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                <h1 className="text-4xl font-extrabold mb-3 text-black tracking-tight">{project?.title || 'Project'}</h1>
-                <PresenceIndicator userName="You" />
-              </div>
-                <p className="text-gray-500 text-lg max-w-2xl leading-relaxed">{project?.goal}</p>
-              </div>
-              <button
-                onClick={() => {
-                  setEditTitle(project?.title || '');
-                  setEditGoal(project?.goal || '');
-                  setIsEditingProject(true);
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600 text-sm px-2 py-1 rounded hover:bg-blue-50"
-                title="Edit project details"
-              >
-                &#9998;
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-          {isFailed && activeRunId && (
-            <button
-              onClick={() => retryRun.mutate(activeRunId)}
-              disabled={retryRun.isPending}
-              className="bg-orange-600 text-white px-6 py-3 rounded-2xl font-bold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 w-full md:w-auto"
-            >
-              {retryRun.isPending ? 'Retrying...' : 'Retry Failed Stage'}
-            </button>
-          )}
-          <button
-            onClick={() => {
-              if (selectedModelIds.length > 0) {
-                // Start the run and close the selector
-                startRun.mutate({ projectId, modelIds: selectedModelIds, searchProvider: searchProvider || undefined, loopMode, checkpointStages });
-                setShowModelSelector(false);
-              } else {
-                // Show the model selector
-                setShowModelSelector(true);
-              }
-            }}
-            disabled={startRun.isPending || isRunInProgress}
-            className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-sm hover:shadow hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 w-full md:w-auto"
-          >
-            {isRunInProgress ? 'Run In Progress...' : startRun.isPending ? 'Starting...' : selectedModelIds.length > 0 ? `Start with ${selectedModelIds.length} Model${selectedModelIds.length > 1 ? 's' : ''}` : showModelSelector ? 'Cancel' : 'Start New Run'}
-          </button>
-        </div>
-      </header>
+      <ProjectHeader
+        projectTitle={project?.title || 'Project'}
+        projectGoal={project?.goal || ''}
+        projectId={projectId}
+        isRunInProgress={isRunInProgress}
+        isRunPending={startRun.isPending}
+        selectedModelCount={selectedModelIds.length}
+        showModelSelector={showModelSelector}
+        isFailed={isFailed}
+        showRetry={isFailed && !!activeRunId}
+        activeRunId={activeRunId}
+        retryPending={retryRun.isPending}
+        onStartRun={() => {
+          if (selectedModelIds.length > 0) {
+            startRun.mutate({ projectId, modelIds: selectedModelIds, searchProvider: searchProvider || undefined, loopMode, checkpointStages });
+            setShowModelSelector(false);
+          } else {
+            setShowModelSelector(true);
+          }
+        }}
+        onRetryRun={() => retryRun.mutate(activeRunId!)}
+        onToggleModelSelector={() => setShowModelSelector(!showModelSelector)}
+        onSaveProject={(title, goal) => updateProject.mutate({ projectId, data: { title, goal } })}
+      />
 
       {showModelSelector && (
         <div className="bg-white p-4 rounded-lg border shadow-sm">
@@ -368,24 +192,12 @@ export default function ProjectDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-blue-50/50 border border-blue-100 p-6 rounded-3xl">
-          <p className="text-xs font-extrabold text-blue-400 uppercase tracking-widest mb-1">Claims</p>
-          <p className="text-4xl font-black text-blue-700">{claims.length}</p>
-        </div>
-        <div className="bg-green-50/50 border border-green-100 p-6 rounded-3xl">
-          <p className="text-xs font-extrabold text-green-400 uppercase tracking-widest mb-1">Evidence</p>
-          <p className="text-4xl font-black text-green-700">{evidence.length}</p>
-        </div>
-        <div className="bg-purple-50/50 border border-purple-100 p-6 rounded-3xl">
-          <p className="text-xs font-extrabold text-purple-400 uppercase tracking-widest mb-1">Latest Decision</p>
-          <p className="text-2xl md:text-3xl font-black text-purple-700 capitalize break-words">{latestDecision ? latestDecision.decisionStatus.replace(/_/g, ' ') : '—'}</p>
-        </div>
-        <div className="bg-yellow-50/50 border border-yellow-100 p-6 rounded-3xl">
-          <p className="text-xs font-extrabold text-yellow-400 uppercase tracking-widest mb-1">Idea Status</p>
-          <p className="text-2xl md:text-3xl font-black text-yellow-700 capitalize break-words">{version?.status ? version.status.replace(/_/g, ' ') : project?.status}</p>
-        </div>
-      </div>
+      <ProjectStatsGrid
+        claimsCount={claims.length}
+        evidenceCount={evidence.length}
+        latestDecisionLabel={latestDecision ? latestDecision.decisionStatus.replace(/_/g, ' ') : '—'}
+        ideaStatus={version?.status ? version.status.replace(/_/g, ' ') : project?.status || 'active'}
+      />
 
       <div className="flex gap-4">
         <button
@@ -441,8 +253,8 @@ export default function ProjectDashboard() {
         />
       )}
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           <section className="bg-white border rounded-lg p-6">
             <h2 className="text-lg font-semibold mb-4 border-b pb-2">Current Idea Version</h2>
             <div className="prose prose-sm max-w-none">
@@ -465,7 +277,7 @@ export default function ProjectDashboard() {
           {claims.length > 0 && (
             <section className="bg-white border rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4 border-b pb-2">Evidence Coverage</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <p className="text-2xl font-black text-green-600">
                     {claims.filter((c: any) => c.status === 'supported').length}
@@ -554,7 +366,7 @@ export default function ProjectDashboard() {
             return (
               <section className="bg-white border rounded-lg p-6">
                 <h2 className="text-lg font-semibold mb-4 border-b pb-2">Analytics</h2>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-blue-50 rounded-xl">
                     <div className="text-2xl font-bold text-blue-700">{resolutionRate}%</div>
                     <div className="text-xs text-blue-600 mt-1">Claims Resolved</div>
@@ -591,99 +403,12 @@ export default function ProjectDashboard() {
         </div>
 
         <aside className="space-y-6">
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-gray-700">Run Timeline</h2>
-                {isRunLive && (
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </span>
-                )}
-              </div>
-              {activeRunId && (
-                <span className="text-[10px] font-mono text-gray-300 select-all" title={activeRunId}>{activeRunId.slice(0, 8)}</span>
-              )}
-            </div>
-            <div className="h-[520px] overflow-y-auto scroll-smooth">
-              {events.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
-                    <span className="text-gray-300 text-xl">&#9654;</span>
-                  </div>
-                  <p className="text-sm text-gray-400 font-medium">No active run</p>
-                  <p className="text-xs text-gray-300 mt-1">Start a run to see live progress here</p>
-                </div>
-              ) : (
-                <div className="px-4 py-3">
-                  {events.map((e, i) => {
-                    const meta = getEventIcon(e.type);
-                    const label = phaseLabels[e.type] || (e.type === 'run.started' ? 'Run Started' : e.type);
-                    const desc = getEventDescription(e);
-                    const isFailed = e.type?.endsWith('.failed') || e.type === 'run.failed' || e.type === 'error';
-                    const isLast = i === events.length - 1;
-
-                    return (
-                      <div
-                        key={i}
-                        className={`animate-fade-slide-in flex gap-3 ${i < events.length - 1 ? 'pb-1' : ''}`}
-                        style={{ animationDelay: isLast ? '0ms' : '0ms' }}
-                      >
-                        <div className="flex flex-col items-center">
-                          <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs ${isFailed ? 'bg-red-50' : e.type?.endsWith('.completed') || e.type === 'run.completed' ? 'bg-emerald-50' : e.type?.endsWith('.started') ? 'bg-sky-50' : 'bg-gray-50'} ${meta.color}`}>
-                            {meta.icon}
-                          </div>
-                          {i < events.length - 1 && (
-                            <div className="w-px flex-1 bg-gray-100 my-1"></div>
-                          )}
-                        </div>
-                        <div className={`flex-1 min-w-0 pb-3 ${isLast ? '' : ''}`}>
-                          <div className="flex items-baseline gap-2">
-                            <p className={`text-sm font-medium leading-tight ${isFailed ? 'text-red-600' : 'text-gray-800'}`}>
-                              {label}
-                            </p>
-                          </div>
-                          {desc && (
-                            <p className={`text-xs mt-0.5 leading-relaxed ${isFailed ? 'text-red-400' : 'text-gray-400'}`}>
-                              {desc}
-                            </p>
-                          )}
-                          <p className="text-[10px] text-gray-300 mt-1 tabular-nums">
-                            {formatTime(e.createdAt || e.payload?.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {isRunLive && (
-                    <div className="flex items-center gap-2 pl-10 pt-1">
-                      <div className="flex gap-1">
-                        <span className="w-1 h-1 rounded-full bg-gray-300 animate-pulse-soft" style={{ animationDelay: '0ms' }}></span>
-                        <span className="w-1 h-1 rounded-full bg-gray-300 animate-pulse-soft" style={{ animationDelay: '300ms' }}></span>
-                        <span className="w-1 h-1 rounded-full bg-gray-300 animate-pulse-soft" style={{ animationDelay: '600ms' }}></span>
-                      </div>
-                      <span className="text-[10px] text-gray-300 animate-pulse-soft">waiting for next event</span>
-                    </div>
-                  )}
-                  <div ref={timelineEndRef} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <nav className="flex flex-col space-y-1">
-            <Link href={`/projects/${projectId}/timeline`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Deliberation Timeline</Link>
-            <Link href={`/projects/${projectId}/evidence`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Evidence Commons</Link>
-            <Link href={`/projects/${projectId}/ideas`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Idea Evolution</Link>
-            <Link href={`/projects/${projectId}/decisions`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Decision Ledger</Link>
-            <Link href={`/projects/${projectId}/hypotheses`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Hypotheses</Link>
-            <Link href={`/projects/${projectId}/tasks`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Research Tasks</Link>
-            <Link href={`/projects/${projectId}/graph`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Citation Graph</Link>
-            <Link href={`/projects/${projectId}/runs/compare`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Compare Runs</Link>
-            <Link href={`/projects/${projectId}/literature-reviews`} className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Literature Reviews</Link>
-            <Link href="/settings/evaluation-criteria" className="p-3 hover:bg-white hover:shadow-sm rounded border border-transparent hover:border-gray-200 transition-all text-sm font-medium">Evaluation Criteria</Link>
-          </nav>
+          <RunTimeline
+            events={events}
+            activeRunId={activeRunId}
+            isRunLive={isRunLive}
+          />
+          <ProjectNavLinks projectId={projectId} />
         </aside>
       </div>
     </div>

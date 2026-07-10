@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useProjects, useEvaluationCriteria, useCreateCriteria } from '@/hooks/useApi';
+import type { EvaluationCriteria } from '@/hooks/useEvaluationCriteria';
 
 export default function EvaluationCriteriaPage() {
   const { data: projectsData } = useProjects();
@@ -15,7 +16,7 @@ export default function EvaluationCriteriaPage() {
   const [weight, setWeight] = useState('1.0');
 
   const projects = projectsData?.data || [];
-  const criteria = criteriaData?.data || [];
+  const criteria = (criteriaData?.data || []) as EvaluationCriteria[];
 
   const handleCreate = async () => {
     if (!name.trim() || !description.trim() || !selectedProjectId) return;

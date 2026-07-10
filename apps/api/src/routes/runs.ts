@@ -6,6 +6,13 @@ import { requireProjectAccess } from './ownership.js';
 import { RunEventService } from '../services/event.service.js';
 import { deliberationQueue } from '../orchestrator/worker.js';
 import { logger } from '../utils/logger.js';
+import {
+  SSE_INITIAL_POLL_INTERVAL_MS,
+  SSE_MAX_POLL_INTERVAL_MS,
+  SSE_HEARTBEAT_INTERVAL_MS,
+  MESSAGE_CONTENT_MAX_CHARS,
+  RESPONSE_TEXT_MAX_CHARS,
+} from '../config/constants.js';
 
 const createRunSchema = z.object({
   modelIds: z.array(z.string()).min(1, 'At least one model ID required'),
@@ -120,9 +127,9 @@ export async function runRoutes(fastify: FastifyInstance) {
       contextManifest: c.contextManifestId ? manifestById.get(c.contextManifestId) ?? null : null,
       messages: Array.isArray(c.messages) ? (c.messages as any[]).map((m: any) => ({
         role: m.role,
-        content: typeof m.content === 'string' ? m.content.slice(0, 3000) : m.content,
+        content: typeof m.content === 'string' ? m.content.slice(0, MESSAGE_CONTENT_MAX_CHARS) : m.content,
       })) : c.messages,
-      responseText: c.responseText ? c.responseText.slice(0, 5000) : null,
+      responseText: c.responseText ? c.responseText.slice(0, RESPONSE_TEXT_MAX_CHARS) : null,
       responseJson: c.responseJson,
     }));
 
@@ -198,6 +205,8 @@ export async function runRoutes(fastify: FastifyInstance) {
 
     let lastTimestamp = new Date(0).toISOString();
     let destroyed = false;
+    let currentInterval = SSE_INITIAL_POLL_INTERVAL_MS;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
 
     const heartbeat = setInterval(() => {
       if (destroyed) return;
@@ -206,11 +215,11 @@ export async function runRoutes(fastify: FastifyInstance) {
       } catch {
         destroyed = true;
         clearInterval(heartbeat);
-        clearInterval(pollInterval);
+        if (pollTimer) clearInterval(pollTimer);
       }
-    }, 15000);
+    }, SSE_HEARTBEAT_INTERVAL_MS);
 
-    const pollInterval = setInterval(async () => {
+    const doPoll = async () => {
       if (destroyed) return;
 
       try {
@@ -226,15 +235,28 @@ export async function runRoutes(fastify: FastifyInstance) {
           const sseMessage = `id: ${event.id}\ndata: ${data}\n\n`;
           reply.raw.write(sseMessage);
         }
-        if (events.length > 0) lastTimestamp = events[events.length - 1].createdAt.toISOString();
+        if (events.length > 0) {
+          lastTimestamp = events[events.length - 1].createdAt.toISOString();
+          currentInterval = SSE_INITIAL_POLL_INTERVAL_MS;
+        } else {
+          currentInterval = Math.min(currentInterval * 1.5, SSE_MAX_POLL_INTERVAL_MS);
+        }
       } catch (err) {
         logger.error('SSE poll error', { runId, error: (err as Error).message });
       }
-    }, 1000);
+
+      // Reschedule with adaptive interval
+      if (!destroyed && pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = setInterval(doPoll, currentInterval);
+      }
+    };
+
+    pollTimer = setInterval(doPoll, currentInterval);
 
     request.raw.on('close', () => {
       destroyed = true;
-      clearInterval(pollInterval);
+      if (pollTimer) clearInterval(pollTimer);
       clearInterval(heartbeat);
     });
   });
@@ -441,7 +463,7 @@ export async function runRoutes(fastify: FastifyInstance) {
       return { data: { success: true, message: 'Run retried' } };
     } catch (err: unknown) {
       logger.error('Retry endpoint error', { runId, error: (err as Error).message, stack: (err as Error).stack });
-      return reply.status(500).send({ error: `Retry failed: ${(err as Error).message}` });
+      return reply.status(500).send({ error: 'Retry failed' });
     }
   });
 
@@ -565,7 +587,7 @@ export async function runRoutes(fastify: FastifyInstance) {
     });
     if (!stage) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Stage not found' } });
     if (stage.status !== 'IN_PROGRESS' && stage.status !== 'PENDING') {
-      return reply.status(400).send({ error: `Stage is ${stage.status}, can only pause PENDING or IN_PROGRESS stages` });
+      return reply.status(400).send({ error: 'Stage is not in a pausable state' });
     }
 
     await prisma.runStage.update({
@@ -590,7 +612,7 @@ export async function runRoutes(fastify: FastifyInstance) {
     });
     if (!stage) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Stage not found' } });
     if (stage.status !== 'PAUSED') {
-      return reply.status(400).send({ error: `Stage is ${stage.status}, can only resume PAUSED stages` });
+      return reply.status(400).send({ error: 'Stage is not in a resumable state' });
     }
 
     await prisma.runStage.update({
@@ -933,7 +955,7 @@ export async function runRoutes(fastify: FastifyInstance) {
         where: { id: taskId },
         data: { status: 'failed' },
       });
-      return reply.status(500).send({ error: { code: 'TASK_FAILED', message: msg } });
+      return reply.status(500).send({ error: { code: 'TASK_FAILED', message: 'Task execution failed' } });
     }
   });
 }

@@ -1,7 +1,7 @@
 /**
  * Tests for feedback, settings, api-keys, SSE poll mode, and ownership enforcement.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import { feedbackRoutes } from './feedback.js';
 import { settingsRoutes } from './settings.js';
@@ -11,38 +11,6 @@ import { authMiddleware } from './auth.js';
 
 type Store = Record<string, Map<string, any>>;
 
-function createEmptyStore(): Store {
-  return {
-    user: new Map(),
-    userFeedback: new Map(),
-    userApiKey: new Map(),
-    researchProject: new Map(),
-    runEvent: new Map(),
-    runStage: new Map(),
-    modelConfig: new Map(),
-    modelCall: new Map(),
-    authSession: new Map(),
-    ideaVersion: new Map(),
-    claim: new Map(),
-    evidence: new Map(),
-    decisionRecord: new Map(),
-    researchTask: new Map(),
-    rawEvent: new Map(),
-    evidenceAssessment: new Map(),
-    modelReview: new Map(),
-    critique: new Map(),
-    critiqueResponse: new Map(),
-    contextManifest: new Map(),
-    knowledgeEdge: new Map(),
-    hypothesis: new Map(),
-    summary: new Map(),
-    sourceEmbedding: new Map(),
-    researchSession: new Map(),
-    promptVersion: new Map(),
-    promptCall: new Map(),
-  };
-}
-
 function id() {
   return crypto.randomUUID();
 }
@@ -51,99 +19,7 @@ const TEST_USER = { id: 'user-a', email: 'a@test.com', name: 'User A' };
 const OTHER_USER = { id: 'user-b', email: 'b@test.com', name: 'User B' };
 
 const { mockPrisma, mockStore } = vi.hoisted(() => {
-  const store = createEmptyStore();
-
-  function makeModel(table: string, s: Store) {
-    return {
-      findUnique: (args: any) => {
-        if (args.where.id) return s[table]?.get(args.where.id) || null;
-        if (args.where.email) {
-          for (const v of (s[table] || new Map()).values()) {
-            if (v.email === args.where.email) return v;
-          }
-        }
-        return null;
-      },
-      findFirst: (args: any) => {
-        let items = Array.from((s[table] || new Map()).values());
-        const where = args?.where;
-        if (where) {
-          for (const [key, val] of Object.entries(where)) {
-            if (val !== undefined && val !== null && typeof val !== 'object') {
-              items = items.filter((item: any) => item[key] === val);
-            }
-          }
-        }
-        if (args?.orderBy) {
-          for (const [field, dir] of Object.entries(args.orderBy)) {
-            const mul = dir === 'desc' ? -1 : 1;
-            items.sort((a: any, b: any) => {
-              const av = a[field] instanceof Date ? a[field].getTime() : a[field];
-              const bv = b[field] instanceof Date ? b[field].getTime() : b[field];
-              return av > bv ? mul : av < bv ? -mul : 0;
-            });
-          }
-        }
-        return items[0] || null;
-      },
-      findMany: (args: any) => {
-        let items = Array.from((s[table] || new Map()).values());
-        const where = args?.where;
-        if (where) {
-          for (const [key, val] of Object.entries(where)) {
-            if (val !== undefined && val !== null && typeof val !== 'object') {
-              items = items.filter((item: any) => item[key] === val);
-            }
-          }
-        }
-        if (args?.orderBy) {
-          for (const [field, dir] of Object.entries(args.orderBy)) {
-            const mul = dir === 'desc' ? -1 : 1;
-            items.sort((a: any, b: any) => {
-              const av = a[field] instanceof Date ? a[field].getTime() : a[field];
-              const bv = b[field] instanceof Date ? b[field].getTime() : b[field];
-              return av > bv ? mul : av < bv ? -mul : 0;
-            });
-          }
-        }
-        return items;
-      },
-      create: (args: any) => {
-        const record = { ...args.data, id: args.data.id || id(), createdAt: new Date(), updatedAt: new Date() };
-        s[table]?.set(record.id, record);
-        return record;
-      },
-      update: (args: any) => {
-        const existing = s[table]?.get(args.where.id);
-        const record = { ...existing, ...args.data, updatedAt: new Date() };
-        s[table]?.set(args.where.id, record);
-        return record;
-      },
-      delete: (args: any) => {
-        const existing = s[table]?.get(args.where.id);
-        s[table]?.delete(args.where.id);
-        return existing;
-      },
-      updateMany: async () => ({ count: 0 }),
-      deleteMany: async () => ({ count: 0 }),
-      count: async () => 0,
-      upsert: async (args: any) => {
-        const existing = s[table]?.get(args.where.id);
-        if (existing) return makeModel(table, s).update({ where: args.where, data: args.update });
-        return makeModel(table, s).create({ data: { ...args.create, id: args.where.id } });
-      },
-    };
-  }
-
-  function buildPrisma(s: Store) {
-    const models: Record<string, ReturnType<typeof makeModel>> = {};
-    for (const table of Object.keys(s)) {
-      models[table] = makeModel(table, s);
-    }
-    return { ...models, $disconnect: () => {} };
-  }
-
-  return { mockPrisma: buildPrisma(store), mockStore: store };
+  return (globalThis as any).__createInMemoryPrisma();
 });
 
 vi.mock('../prisma.js', () => ({ prisma: mockPrisma, default: mockPrisma }));
@@ -205,7 +81,7 @@ function seedRun(projectId: string, runId = id()) {
 
 describe('Feedback routes', () => {
   beforeEach(() => {
-    for (const map of Object.values(mockStore)) map.clear();
+    for (const map of Object.values(mockStore) as Map<string, any>[]) map.clear();
   });
 
   it('creates and lists feedback', async () => {
@@ -242,7 +118,7 @@ describe('Feedback routes', () => {
 
 describe('Settings routes', () => {
   beforeEach(() => {
-    for (const map of Object.values(mockStore)) map.clear();
+    for (const map of Object.values(mockStore) as Map<string, any>[]) map.clear();
     mockStore.user.set(TEST_USER.id, {
       id: TEST_USER.id,
       email: TEST_USER.email,
@@ -272,8 +148,14 @@ describe('Settings routes', () => {
 });
 
 describe('API key routes', () => {
+  const originalEnv = process.env.API_KEY_ENCRYPTION_KEY;
   beforeEach(() => {
-    for (const map of Object.values(mockStore)) map.clear();
+    process.env.API_KEY_ENCRYPTION_KEY = 'test-encryption-key-for-unit-tests';
+    for (const map of Object.values(mockStore) as Map<string, any>[]) map.clear();
+  });
+  afterEach(() => {
+    if (originalEnv === undefined) delete process.env.API_KEY_ENCRYPTION_KEY;
+    else process.env.API_KEY_ENCRYPTION_KEY = originalEnv;
   });
 
   it('stores keys without returning secret material', async () => {
@@ -300,7 +182,7 @@ describe('API key routes', () => {
 
 describe('Run events SSE poll mode', () => {
   beforeEach(() => {
-    for (const map of Object.values(mockStore)) map.clear();
+    for (const map of Object.values(mockStore) as Map<string, any>[]) map.clear();
   });
 
   it('returns poll events for owned run', async () => {
@@ -332,7 +214,7 @@ describe('Run events SSE poll mode', () => {
 
 describe('Ownership enforcement', () => {
   beforeEach(() => {
-    for (const map of Object.values(mockStore)) map.clear();
+    for (const map of Object.values(mockStore) as Map<string, any>[]) map.clear();
   });
 
   it('returns 404 when accessing another user project', async () => {

@@ -26,8 +26,21 @@ export interface RateLimitOptions {
 }
 
 /**
+ * Resolve rate limit key: prefer user ID (from session token), fall back to IP.
+ * This prevents a single user from starving others and ensures fair limiting.
+ */
+function resolveRateLimitKey(request: FastifyRequest, keyPrefix: string): string {
+  const userId = request.user?.id;
+  if (userId) return `${keyPrefix}:user:${userId}`;
+  const ip = request.ip || 'unknown';
+  return `${keyPrefix}:ip:${ip}`;
+}
+
+/**
  * Simple in-memory rate limiter (per-process). Suitable for local-first MVP;
  * use Redis-backed limiting in multi-instance deployments.
+ *
+ * Uses session token (user ID) when available, falls back to IP.
  */
 export function createRateLimiter(options: RateLimitOptions) {
   const { max, windowMs, keyPrefix = 'rl' } = options;
@@ -35,8 +48,7 @@ export function createRateLimiter(options: RateLimitOptions) {
   return async function rateLimitMiddleware(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     sweepExpiredBuckets();
 
-    const ip = request.ip || 'unknown';
-    const key = `${keyPrefix}:${ip}`;
+    const key = resolveRateLimitKey(request, keyPrefix);
     const now = Date.now();
     let bucket = buckets.get(key);
 
@@ -73,4 +85,15 @@ export const authRateLimiter = createRateLimiter({
   max: Number(process.env.AUTH_RATE_LIMIT_MAX || 20),
   windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60_000),
   keyPrefix: 'auth',
+});
+
+/**
+ * General API rate limiter — applied globally to all routes.
+ * Higher limit than auth since authenticated users need to make many requests
+ * during a deliberation session.
+ */
+export const apiRateLimiter = createRateLimiter({
+  max: Number(process.env.API_RATE_LIMIT_MAX || 200),
+  windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60_000),
+  keyPrefix: 'api',
 });

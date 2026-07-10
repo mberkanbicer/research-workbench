@@ -37,6 +37,31 @@ export async function claimRoutes(fastify: FastifyInstance) {
     return { data: claims };
   });
 
+  /**
+   * GET /projects/:projectId/claims/dependencies
+   * Get all claim dependencies for a project (graph edges).
+   */
+  fastify.get('/projects/:projectId/claims/dependencies', async (request, reply) => {
+    const { projectId } = request.params as { projectId: string };
+    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+
+    // Get all claim IDs for this project, then find dependencies between them
+    const claimIds = (await prisma.claim.findMany({
+      where: { projectId },
+      select: { id: true },
+    })).map(c => c.id);
+
+    const dependencies = await prisma.claimDependency.findMany({
+      where: {
+        OR: [
+          { fromClaimId: { in: claimIds } },
+          { toClaimId: { in: claimIds } },
+        ],
+      },
+    });
+    return { data: dependencies };
+  });
+
   fastify.get('/claims/:claimId', async (request, reply) => {
     const { claimId } = request.params as { claimId: string };
     const claim = await prisma.claim.findFirst({

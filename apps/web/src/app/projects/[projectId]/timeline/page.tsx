@@ -318,6 +318,87 @@ function TranscriptEntry({ event }: { event: any }) {
   );
 }
 
+function ModelCallTranscriptEntry({ call, isLast }: { call: any; isLast: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const messages = call.messages || [];
+  const responseText = call.responseText;
+  const responseJson = call.responseJson;
+
+  return (
+    <div className="border-l-2 border-blue-200 ml-4 pl-4 py-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-left group"
+      >
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-gray-400 w-16 shrink-0 font-mono">{call.createdAt ? new Date(call.createdAt).toLocaleTimeString() : ''}</span>
+          <span className="text-blue-500">&#x1F4AC;</span>
+          <span className="font-medium text-blue-700 group-hover:text-blue-900">
+            {call.model || call.provider || 'LLM'} call
+          </span>
+          <span className="text-gray-400">&rarr;</span>
+          <span className={'text-xs ' + (call.status === 'success' ? 'text-emerald-600' : call.status === 'failed' ? 'text-red-600' : 'text-gray-400')}>
+            {call.status}
+          </span>
+          {call.usage && (
+            <span className="text-gray-400 ml-auto">
+              {((call.usage.prompt_tokens || 0) + (call.usage.completion_tokens || 0)).toLocaleString()} tokens
+            </span>
+          )}
+          <span className="text-gray-400">{expanded ? '\u25B2' : '\u25BC'}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
+          {messages.map((m: any, i: number) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-100 p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className={'text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ' +
+                  (m.role === 'system' ? 'bg-purple-100 text-purple-700' :
+                   m.role === 'user' ? 'bg-blue-100 text-blue-700' :
+                   m.role === 'assistant' ? 'bg-emerald-100 text-emerald-700' :
+                   'bg-gray-100 text-gray-600')
+                }>{m.role}</span>
+                {m.role === 'assistant' && <span className="text-[10px] text-gray-400">response</span>}
+              </div>
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-80 overflow-y-auto">{typeof m.content === 'string' ? m.content : JSON.stringify(m.content, null, 2)}</pre>
+            </div>
+          ))}
+
+          {responseText && (
+            <div className="bg-emerald-50 rounded-lg border border-emerald-200 p-3">
+              <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Response</p>
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-80 overflow-y-auto">{responseText}</pre>
+            </div>
+          )}
+
+          {responseJson != null && (
+            <div className="bg-emerald-50 rounded-lg border border-emerald-200 p-3">
+              <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Response (JSON)</p>
+              <pre className="text-xs text-gray-700 overflow-auto max-h-60">{JSON.stringify(responseJson, null, 2)}</pre>
+            </div>
+          )}
+
+          {call.error && (
+            <div className="bg-red-50 rounded-lg border border-red-200 p-2 text-xs text-red-600">
+              Error: {call.error}
+            </div>
+          )}
+
+          {call.contextManifest && (
+            <div className="bg-violet-50 rounded-lg border border-violet-200 p-2 text-xs">
+              <span className="font-bold text-violet-600">Context:</span>{' '}
+              {(call.contextManifest.includedClaims || []).length} claims,{' '}
+              {(call.contextManifest.includedEvidence || []).length} evidence
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TimelinePage() {
   const { projectId } = useParams() as { projectId: string };
   const { data: projectData, isLoading } = useProject(projectId);
@@ -333,12 +414,12 @@ export default function TimelinePage() {
   const timelineEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (latestRun?.runId && !activeRunId) {
-      setActiveRunId(latestRun.runId);
+    if (latestRun?.data?.runId && !activeRunId) {
+      setActiveRunId(latestRun.data.runId);
     }
   }, [latestRun, activeRunId]);
 
-  const initialRunEvents = (latestRun?.events || []).map((e: any) => ({
+  const initialRunEvents = (latestRun?.data?.events || []).map((e: any) => ({
     id: e.id || crypto.randomUUID(),
     type: e.type,
     payload: e.payload ?? e,
@@ -349,7 +430,7 @@ export default function TimelinePage() {
 
   const terminalTypes = new Set(['run.completed', 'run.failed', 'run.cancelled']);
   const runIsTerminal = events.some((e) => terminalTypes.has(e.type));
-  const { data: modelCallsData } = useRunModelCalls(activeRunId, runIsTerminal);
+  const { data: modelCallsData, isLoading: callsLoading } = useRunModelCalls(activeRunId, runIsTerminal);
   const modelCalls = modelCallsData?.data || [];
 
   useEffect(() => { timelineEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [events]);
@@ -528,15 +609,47 @@ export default function TimelinePage() {
       )}
 
       {activeTab === 'transcript' && (
-        events.length === 0 ? (
+        events.length === 0 && callsLoading ? (
+          <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed">
+            <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Loading transcript...</h3>
+            <p className="text-sm text-gray-500">Fetching run events and model conversations</p>
+          </div>
+        ) : events.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed">
             <div className="text-4xl mb-4">{'\u{1F4DC}'}</div>
             <h3 className="text-lg font-bold text-gray-800 mb-2">No transcript</h3>
           </div>
         ) : (
-          <div className="border rounded-xl overflow-hidden">
-            <div className="max-h-[600px] overflow-y-auto">
-              {filteredEvents.map((e, i) => <TranscriptEntry key={e.id || i} event={e} />)}
+          <div className="border rounded-xl overflow-hidden bg-white">
+            {callsLoading && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-100 text-xs text-blue-600">
+                <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                Loading LLM conversations...
+              </div>
+            )}
+            <div className="max-h-[800px] overflow-y-auto p-2">
+              {(() => {
+                // Merge events and model calls into a single chronological stream
+                const eventItems = filteredEvents.map(e => ({
+                  kind: 'event' as const,
+                  date: new Date(e.createdAt || 0),
+                  data: e,
+                }));
+                const callItems = modelCalls.map(c => ({
+                  kind: 'call' as const,
+                  date: new Date(c.createdAt || 0),
+                  data: c,
+                }));
+                const merged = [...eventItems, ...callItems].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+                return merged.map((item, i) => {
+                  if (item.kind === 'event') {
+                    return <TranscriptEntry key={item.data.id || `e${i}`} event={item.data} />;
+                  }
+                  return <ModelCallTranscriptEntry key={item.data.id || `c${i}`} call={item.data} isLast={i === merged.length - 1} />;
+                });
+              })()}
               <div ref={timelineEndRef} />
             </div>
           </div>
@@ -544,7 +657,12 @@ export default function TimelinePage() {
       )}
 
       {activeTab === 'calls' && (
-        modelCalls.length === 0 ? (
+        modelCalls.length === 0 && callsLoading ? (
+          <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed">
+            <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3" />
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Loading model calls...</h3>
+          </div>
+        ) : modelCalls.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-2xl border border-dashed">
             <div className="text-4xl mb-4">{'\u{1F4AD}'}</div>
             <h3 className="text-lg font-bold text-gray-800 mb-2">No model calls recorded</h3>

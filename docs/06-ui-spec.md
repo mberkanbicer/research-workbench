@@ -75,8 +75,15 @@ Use Next.js App Router.
 /projects/[id]/ideas      Idea evolution
 /projects/[id]/decisions  Decision ledger
 /projects/[id]/tasks      Research tasks
+/projects/[id]/runs/compare          Run Comparison Dashboard
+/projects/[id]/literature-reviews    Literature Reviews
+/projects/[id]/graph                 Citation Graph, Calibration, Robustness
+/projects/[id]/claim-dependencies    Claim Dependency Graph
 /settings/models          Model configuration
+/settings/evaluation-criteria        Custom Evaluation Criteria
 ```
+
+See [13-new-features.md](./13-new-features.md) for UI details on all post-MVP pages.
 
 ## Shared layout
 

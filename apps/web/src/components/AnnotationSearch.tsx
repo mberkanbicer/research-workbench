@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useSearchAnnotations } from '@/hooks/useApi';
+import type { Annotation } from '@/hooks/useAnnotations';
 
 interface AnnotationSearchProps {
   projectId: string;
@@ -21,17 +22,20 @@ export default function AnnotationSearch({ projectId, onSelect }: AnnotationSear
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const { data: results, isLoading } = useSearchAnnotations(projectId, debouncedQuery);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setQuery(value);
     // Debounce: only search after user stops typing for 300ms
-    clearTimeout((globalThis as any).__annotationSearchTimeout);
-    (globalThis as any).__annotationSearchTimeout = setTimeout(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
       setDebouncedQuery(value);
     }, 300);
-  };
+  }, []);
 
-  const annotations = results?.data || [];
+  const annotations = (results?.data || []) as Annotation[];
 
   return (
     <div className="border rounded-lg bg-white">

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { SearchProviderAdapter, SearchResult } from '../search.types.js';
+import { logger } from '../logger.js';
 
 export class MockSearchAdapter implements SearchProviderAdapter {
   private fixtures: { queries: Array<{ match: string; results: SearchResult[] }>; fallbackResults: SearchResult[] };
@@ -57,7 +58,7 @@ export class SearxngSearchAdapter implements SearchProviderAdapter {
       });
 
       if (!response.ok) {
-        console.error(`SearXNG API error: ${response.statusText}`);
+        logger.error('SearXNG API error', { statusText: response.statusText });
         return [];
       }
 
@@ -72,7 +73,7 @@ export class SearxngSearchAdapter implements SearchProviderAdapter {
         sourceType: 'web',
       }));
     } catch (error) {
-      console.error(`SearXNG search failed: ${error}`);
+      logger.error('SearXNG search failed', { error: String(error) });
       return [];
     }
   }
@@ -90,7 +91,7 @@ export class SerpApiSearchAdapter implements SearchProviderAdapter {
   async search(query: string, maxResults = 5): Promise<SearchResult[]> {
     const apiKey = this.apiKey || process.env.SERPAPI_API_KEY;
     if (!apiKey) {
-      console.error('SerpAPI API key not configured');
+      logger.error('SerpAPI API key not configured');
       return [];
     }
 
@@ -106,7 +107,7 @@ export class SerpApiSearchAdapter implements SearchProviderAdapter {
       });
 
       if (!response.ok) {
-        console.error(`SerpAPI error: ${response.statusText}`);
+        logger.error('SerpAPI error', { statusText: response.statusText });
         return [];
       }
 
@@ -121,7 +122,7 @@ export class SerpApiSearchAdapter implements SearchProviderAdapter {
         sourceType: 'web',
       }));
     } catch (error) {
-      console.error(`SerpAPI search failed: ${error}`);
+      logger.error('SerpAPI search failed', { error: String(error) });
       return [];
     }
   }
@@ -152,7 +153,7 @@ export class WebSearchAdapter implements SearchProviderAdapter {
       });
 
       if (!response.ok) {
-        console.error(`Web search API error: ${response.statusText}`);
+        logger.error('Web search API error', { statusText: response.statusText });
         return [];
       }
 
@@ -167,7 +168,7 @@ export class WebSearchAdapter implements SearchProviderAdapter {
         sourceType: 'web',
       }));
     } catch (error) {
-      console.error(`Web search request failed: ${error}`);
+      logger.error('Web search request failed', { error: String(error) });
       return [];
     }
   }

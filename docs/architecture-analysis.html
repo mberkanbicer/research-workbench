@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Research Workbench — Architecture, Analysis &amp; Requirements</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --bg-surface: #161b22;
+    --bg-raised: #1c2333;
+    --bg-accent: #1a2744;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --text-bright: #f0f6fc;
+    --border: #30363d;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-orange: #d29922;
+    --accent-red: #f85149;
+    --accent-purple: #bc8cff;
+    --accent-cyan: #39d2c0;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --serif: 'Georgia', 'Times New Roman', serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- NAV RAIL --- */
+  .rail {
+    position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    overflow-y: auto;
+    z-index: 100;
+  }
+  .rail-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 20px;
+  }
+  .rail a {
+    display: block; padding: 6px 10px; margin: 2px 0;
+    color: var(--text-muted); text-decoration: none; font-size: 13px;
+    border-radius: 6px; transition: all 0.15s;
+  }
+  .rail a:hover { background: var(--bg-raised); color: var(--text-bright); }
+  .rail a.active { background: var(--bg-accent); color: var(--accent-blue); font-weight: 600; }
+  .rail .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--text-muted); margin: 16px 0 6px; opacity: 0.6;
+  }
+
+  /* --- MAIN --- */
+  .main { margin-left: 220px; padding: 40px 48px 80px; max-width: 1100px; }
+
+  /* --- HEADER --- */
+  .hero { margin-bottom: 48px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+  .hero h1 {
+    font-family: var(--serif); font-size: 32px; font-weight: 700;
+    color: var(--text-bright); line-height: 1.2; margin-bottom: 8px;
+  }
+  .hero .subtitle { font-size: 16px; color: var(--text-muted); max-width: 640px; }
+  .hero .meta { margin-top: 16px; display: flex; gap: 24px; font-size: 12px; color: var(--text-muted); }
+  .hero .meta span { font-family: var(--mono); }
+
+  /* --- SECTIONS --- */
+  section { margin-bottom: 56px; }
+  section h2 {
+    font-family: var(--serif); font-size: 24px; font-weight: 700;
+    color: var(--text-bright); margin-bottom: 6px;
+    padding-top: 16px;
+  }
+  section h3 {
+    font-size: 17px; font-weight: 700; color: var(--text-bright);
+    margin: 28px 0 10px;
+  }
+  section h4 {
+    font-size: 14px; font-weight: 700; color: var(--accent-blue);
+    margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .section-subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+  p { margin-bottom: 12px; max-width: 760px; }
+  ul, ol { margin: 0 0 16px 20px; }
+  li { margin-bottom: 4px; }
+
+  /* --- DIAGRAM --- */
+  .diagram-container {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 24px; margin: 20px 0;
+    overflow-x: auto;
+  }
+  .diagram-container svg { display: block; margin: 0 auto; }
+  .diagram-caption {
+    text-align: center; font-size: 12px; color: var(--text-muted);
+    margin-top: 12px; font-style: italic;
+  }
+
+  /* --- TABLES --- */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 12px; font-weight: 700;
+    color: var(--text-muted); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.8px; border-bottom: 2px solid var(--border);
+    position: sticky; top: 0; background: var(--bg);
+  }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:hover { background: var(--bg-raised); }
+
+  /* --- STATUS BADGES --- */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-done { background: #1a3a2a; color: var(--accent-green); }
+  .badge-partial { background: #2d2200; color: var(--accent-orange); }
+  .badge-missing { background: #3a1a1a; color: var(--accent-red); }
+  .badge-phase { background: #1a1a3a; color: var(--accent-purple); }
+
+  /* --- RISK CARD --- */
+  .risk-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px; margin: 12px 0;
+    border-left: 4px solid var(--accent-red);
+  }
+  .risk-card.medium { border-left-color: var(--accent-orange); }
+  .risk-card.low { border-left-color: var(--accent-green); }
+  .risk-card .risk-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .risk-card .risk-title { font-weight: 700; color: var(--text-bright); font-size: 14px; }
+  .risk-card .risk-desc { font-size: 13px; color: var(--text); }
+
+  /* --- CHECKLIST --- */
+  .checklist { list-style: none; margin-left: 0; }
+  .checklist li {
+    padding: 8px 12px; margin: 4px 0;
+    border-radius: 6px; font-size: 13px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .checklist li:hover { background: var(--bg-raised); }
+  .check-icon {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-top: 1px;
+  }
+  .check-icon.done { background: #1a3a2a; color: var(--accent-green); }
+  .check-icon.partial { background: #2d2200; color: var(--accent-orange); }
+  .check-icon.missing { background: #3a1a1a; color: var(--accent-red); }
+  .check-text { flex: 1; }
+  .check-note { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+
+  /* --- PRIORITY MATRIX --- */
+  .priority-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;
+  }
+  .priority-cell {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px;
+  }
+  .priority-cell h4 { margin-top: 0; }
+
+  /* --- CODE --- */
+  code {
+    font-family: var(--mono); font-size: 12px; background: var(--bg-raised);
+    padding: 2px 6px; border-radius: 4px;
+  }
+  pre {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; overflow-x: auto;
+    font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    margin: 12px 0;
+  }
+
+  /* --- FLOW DIAGRAM --- */
+  .flow-steps {
+    display: flex; align-items: center; gap: 0; margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 14px; font-size: 12px;
+    font-weight: 600; color: var(--text-bright); white-space: nowrap;
+  }
+  .flow-arrow { color: var(--text-muted); font-size: 16px; margin: 0 4px; }
+
+  /* --- TABS --- */
+  .tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 2px solid var(--border); }
+  .tab-btn {
+    padding: 10px 20px; font-size: 13px; font-weight: 600;
+    color: var(--text-muted); background: none; border: none;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+  .tab-content { display: none; padding: 20px 0; }
+  .tab-content.active { display: block; }
+
+  /* --- COUNTERS --- */
+  .stat-row { display: flex; gap: 24px; margin: 16px 0; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--text-bright); }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  @media (max-width: 900px) {
+    .rail { display: none; }
+    .main { margin-left: 0; padding: 24px; }
+    .priority-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV RAIL -->
+<nav class="rail">
+  <div class="rail-title">Architecture Analysis</div>
+  <a href="#arch-diagram">System Architecture</a>
+  <a href="#arch-components">Component Map</a>
+  <a href="#arch-dataflow">Data Flow</a>
+  <div class="section-label">Deep Analysis</div>
+  <a href="#orchestrator">Orchestrator Engine</a>
+  <a href="#workflow">Workflow Pipeline</a>
+  <a href="#state">State Management</a>
+  <a href="#self-improvement">Self-Improvement</a>
+  <a href="#model-gateway">Model Gateway</a>
+  <div class="section-label">Gaps &amp; Plan</div>
+  <a href="#gaps">Critical Gaps</a>
+  <a href="#priorities">Priority Plan</a>
+  <a href="#risks">Risk Assessment</a>
+  <div class="section-label">Requirements</div>
+  <a href="#req-mvp">MVP Criteria</a>
+  <a href="#req-spec">Implementation Spec</a>
+  <a href="#req-data">Data Model</a>
+  <a href="#req-api">API Contract</a>
+  <a href="#req-orch">Orchestration</a>
+  <a href="#req-ui">UI Spec</a>
+  <a href="#req-security">Security</a>
+  <a href="#req-testing">Testing</a>
+  <a href="#req-features">New Features</a>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <h1>Research Workbench</h1>
+  <p class="subtitle">Architecture diagram, deep backend analysis, critical gap assessment, prioritized fix plan, and complete requirements checklist for the Evidence-Grounded Multi-Model Long-Horizon Research Workbench.</p>
+  <div class="meta">
+    <span>Generated: 2026-07-09</span>
+    <span>Stack: Fastify + Next.js + Prisma + BullMQ + PostgreSQL</span>
+    <span>Monorepo: pnpm workspace</span>
+  </div>
+</header>
+
+<!-- ============================================================ -->
+<!-- PART 1: ARCHITECTURE DIAGRAM -->
+<!-- ============================================================ -->
+<section id="arch-diagram">
+  <h2>1. System Architecture Diagram</h2>
+  <p class="section-subtitle">Complete component topology showing all layers, data stores, and communication paths.</p>
+
+  <div class="diagram-container">
+    <svg viewBox="0 0 1000 720" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#58a6ff"/>
+        </marker>
+        <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#3fb950"/>
+        </marker>
+        <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#d29922"/>
+        </marker>
+        <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#f85149"/>
+        </marker>
+        <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a2744;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#162033;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+
+      <!-- LAYER LABELS -->
+      <text x="20" y="30" fill="#8b949e" font-size="11" font-weight="700" letter-spacing="1.5" text-transform="uppercase">CLIENT LAYER</text>
+      <text x="20" y="170" fill="#8b949e" font-size="11" font-weight="700" letter-spacing="1.5">API LAYER</text>
+      <text x="20" y="330" fill="#8b949e" font-size="11" font-weight="700" letter-spacing="1.5">ORCHESTRATION LAYER</text>
+      <text x="20" y="500" fill="#8b949e" font-size="11" font-weight="700" letter-spacing="1.5">SERVICE LAYER</text>
+      <text x="20" y="620" fill="#8b949e" font-size="11" font-weight="700" letter-spacing="1.5">DATA LAYER</text>
+
+      <!-- CLIENT LAYER -->
+      <rect x="100" y="40" width="180" height="60" rx="8" fill="url(#grad-blue)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="190" y="66" fill="#f0f6fc" font-size="13" font-weight="700" text-anchor="middle">Next.js Web App</text>
+      <text x="190" y="82" fill="#8b949e" font-size="10" text-anchor="middle">React Query + Zustand</text>
+
+      <rect x="320" y="40" width="160" height="60" rx="8" fill="url(#grad-blue)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="400" y="66" fill="#f0f6fc" font-size="13" font-weight="700" text-anchor="middle">REST API Client</text>
+      <text x="400" y="82" fill="#8b949e" font-size="10" text-anchor="middle">apiFetch + Bearer Token</text>
+
+      <rect x="520" y="40" width="140" height="60" rx="8" fill="url(#grad-blue)" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="590" y="66" fill="#f0f6fc" font-size="13" font-weight="700" text-anchor="middle">SSE Client</text>
+      <text x="590" y="82" fill="#8b949e" font-size="10" text-anchor="middle">EventSource API</text>
+
+      <!-- API LAYER -->
+      <rect x="80" y="180" width="840" height="120" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="100" y="200" fill="#58a6ff" font-size="12" font-weight="700">Fastify API Server — Port 4000</text>
+
+      <!-- Route boxes -->
+      <rect x="100" y="210" width="100" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="150" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Auth Routes</text>
+
+      <rect x="210" y="210" width="100" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="260" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Project Routes</text>
+
+      <rect x="320" y="210" width="100" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="370" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Claim Routes</text>
+
+      <rect x="430" y="210" width="100" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="480" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Evidence Routes</text>
+
+      <rect x="540" y="210" width="100" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="590" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Run Routes</text>
+
+      <rect x="650" y="210" width="110" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="705" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Graph Routes</text>
+
+      <rect x="770" y="210" width="130" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="835" y="232" fill="#c9d1d9" font-size="10" text-anchor="middle">Realtime Routes</text>
+
+      <rect x="100" y="255" width="120" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="160" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">Model Config Routes</text>
+
+      <rect x="230" y="255" width="130" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="295" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">Evaluation Criteria</text>
+
+      <rect x="370" y="255" width="110" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="425" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">Annotations</text>
+
+      <rect x="490" y="255" width="100" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="540" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">Prompts Routes</text>
+
+      <rect x="600" y="255" width="110" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="655" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">Template Routes</text>
+
+      <rect x="720" y="255" width="90" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="765" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">API Keys</text>
+
+      <rect x="820" y="255" width="90" height="32" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="865" y="275" fill="#c9d1d9" font-size="10" text-anchor="middle">Feedback</text>
+
+      <!-- Arrows: Client → API -->
+      <line x1="190" y1="100" x2="190" y2="180" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="400" y1="100" x2="400" y2="180" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="590" y1="100" x2="590" y2="180" stroke="#58a6ff" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- ORCHESTRATION LAYER -->
+      <rect x="80" y="340" width="840" height="130" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="100" y="360" fill="#bc8cff" font-size="12" font-weight="700">Orchestration Engine — BullMQ Worker</text>
+
+      <!-- BullMQ -->
+      <rect x="100" y="370" width="120" height="44" rx="6" fill="#2a1a3a" stroke="#bc8cff" stroke-width="1"/>
+      <text x="160" y="390" fill="#bc8cff" font-size="11" font-weight="700" text-anchor="middle">BullMQ Queue</text>
+      <text x="160" y="404" fill="#8b949e" font-size="9" text-anchor="middle">Concurrency: 2</text>
+
+      <!-- GoalSeekingLoop -->
+      <rect x="240" y="370" width="180" height="44" rx="6" fill="#2a1a3a" stroke="#bc8cff" stroke-width="1"/>
+      <text x="330" y="390" fill="#bc8cff" font-size="11" font-weight="700" text-anchor="middle">GoalSeekingLoop</text>
+      <text x="330" y="404" fill="#8b949e" font-size="9" text-anchor="middle">Iterative Pipeline</text>
+
+      <!-- Stage Pipeline -->
+      <rect x="440" y="370" width="110" height="44" rx="6" fill="#1a2744" stroke="#58a6ff" stroke-width="1"/>
+      <text x="495" y="386" fill="#58a6ff" font-size="10" font-weight="700" text-anchor="middle">Stage Classes</text>
+      <text x="495" y="400" fill="#8b949e" font-size="9" text-anchor="middle">Extract→Review→Vote</text>
+
+      <!-- Self-Improvement -->
+      <rect x="570" y="370" width="140" height="44" rx="6" fill="#1a3a2a" stroke="#3fb950" stroke-width="1"/>
+      <text x="640" y="386" fill="#3fb950" font-size="10" font-weight="700" text-anchor="middle">Self-Improvement</text>
+      <text x="640" y="400" fill="#8b949e" font-size="9" text-anchor="middle">Meta-Prompt Loop</text>
+
+      <!-- Action Planner -->
+      <rect x="730" y="370" width="130" height="44" rx="6" fill="#2d2200" stroke="#d29922" stroke-width="1"/>
+      <text x="795" y="386" fill="#d29922" font-size="10" font-weight="700" text-anchor="middle">ActionPlanner</text>
+      <text x="795" y="400" fill="#8b949e" font-size="9" text-anchor="middle">Corrective Actions</text>
+
+      <!-- Consensus Evaluator -->
+      <rect x="100" y="425" width="160" height="36" rx="6" fill="#1a2744" stroke="#58a6ff" stroke-width="1"/>
+      <text x="180" y="447" fill="#58a6ff" font-size="10" font-weight="700" text-anchor="middle">ConsensusEvaluator</text>
+
+      <!-- Prompt Registry -->
+      <rect x="280" y="425" width="150" height="36" rx="6" fill="#1a3a2a" stroke="#3fb950" stroke-width="1"/>
+      <text x="355" y="447" fill="#3fb950" font-size="10" font-weight="700" text-anchor="middle">PromptRegistry</text>
+
+      <!-- Output Analyzer -->
+      <rect x="450" y="425" width="150" height="36" rx="6" fill="#1a3a2a" stroke="#3fb950" stroke-width="1"/>
+      <text x="525" y="447" fill="#3fb950" font-size="10" font-weight="700" text-anchor="middle">OutputAnalyzer</text>
+
+      <!-- Meta-Prompt Service -->
+      <rect x="620" y="425" width="160" height="36" rx="6" fill="#1a3a2a" stroke="#3fb950" stroke-width="1"/>
+      <text x="700" y="447" fill="#3fb950" font-size="10" font-weight="700" text-anchor="middle">MetaPromptService</text>
+
+      <!-- Arrows: API → Orch -->
+      <line x1="260" y1="300" x2="160" y2="370" stroke="#bc8cff" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="160" y1="414" x2="240" y2="395" stroke="#bc8cff" stroke-width="1" marker-end="url(#arrow)"/>
+
+      <!-- SERVICE LAYER -->
+      <rect x="80" y="500" width="840" height="80" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="100" y="520" fill="#39d2c0" font-size="12" font-weight="700">Service Layer</text>
+
+      <rect x="100" y="530" width="130" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="165" y="552" fill="#c9d1d9" font-size="10" text-anchor="middle">DeliberationServices</text>
+
+      <rect x="245" y="530" width="110" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="300" y="552" fill="#c9d1d9" font-size="10" text-anchor="middle">ModelGateway</text>
+
+      <rect x="370" y="530" width="120" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="430" y="552" fill="#c9d1d9" font-size="10" text-anchor="middle">SearchAdapter</text>
+
+      <rect x="505" y="530" width="130" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="570" y="552" fill="#c9d1d9" font-size="10" text-anchor="middle">EventService</text>
+
+      <rect x="650" y="530" width="120" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="710" y="552" fill="#c9d1d9" font-size="10" text-anchor="middle">ContextService</text>
+
+      <rect x="785" y="530" width="120" height="36" rx="5" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="845" y="552" fill="#c9d1d9" font-size="10" text-anchor="middle">ServiceBuilder</text>
+
+      <!-- Arrows: Orch → Service -->
+      <line x1="495" y1="414" x2="165" y2="530" stroke="#39d2c0" stroke-width="1.2" marker-end="url(#arrow-green)"/>
+
+      <!-- DATA LAYER -->
+      <rect x="80" y="620" width="840" height="80" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="100" y="640" fill="#d29922" font-size="12" font-weight="700">Data Layer</text>
+
+      <rect x="100" y="650" width="120" height="40" rx="6" fill="#2d2200" stroke="#d29922" stroke-width="1"/>
+      <text x="160" y="668" fill="#d29922" font-size="11" font-weight="700" text-anchor="middle">PostgreSQL</text>
+      <text x="160" y="682" fill="#8b949e" font-size="9" text-anchor="middle">30+ Prisma Models</text>
+
+      <rect x="240" y="650" width="100" height="40" rx="6" fill="#3a1a1a" stroke="#f85149" stroke-width="1"/>
+      <text x="290" y="668" fill="#f85149" font-size="11" font-weight="700" text-anchor="middle">Redis</text>
+      <text x="290" y="682" fill="#8b949e" font-size="9" text-anchor="middle">BullMQ Jobs</text>
+
+      <rect x="360" y="650" width="130" height="40" rx="6" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="425" y="668" fill="#c9d1d9" font-size="10" text-anchor="middle">pgvector Extension</text>
+      <text x="425" y="682" fill="#8b949e" font-size="9" text-anchor="middle">Semantic Search</text>
+
+      <rect x="510" y="650" width="130" height="40" rx="6" fill="#1c2333" stroke="#30363d" stroke-width="0.8"/>
+      <text x="575" y="668" fill="#c9d1d9" font-size="10" text-anchor="middle">Filesystem</text>
+      <text x="575" y="682" fill="#8b949e" font-size="9" text-anchor="middle">Templates, Seeds</text>
+
+      <!-- Arrows: Service → Data -->
+      <line x1="300" y1="566" x2="160" y2="650" stroke="#d29922" stroke-width="1.2" marker-end="url(#arrow-orange)"/>
+      <line x1="300" y1="566" x2="290" y2="650" stroke="#d29922" stroke-width="1.2" marker-end="url(#arrow-orange)"/>
+
+      <!-- SHARED PACKAGE indicator -->
+      <rect x="780" y="40" width="160" height="60" rx="8" fill="#1c2333" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="860" y="66" fill="#3fb950" font-size="12" font-weight="700" text-anchor="middle">@repo/shared</text>
+      <text x="860" y="82" fill="#8b949e" font-size="10" text-anchor="middle">Zod Schemas + Types</text>
+
+      <!-- MODEL GATEWAY PACKAGE -->
+      <rect x="780" y="530" width="160" height="36" rx="8" fill="#1c2333" stroke="#39d2c0" stroke-width="1.5"/>
+      <text x="860" y="552" fill="#39d2c0" font-size="11" font-weight="700" text-anchor="middle">@repo/model-gateway</text>
+    </svg>
+    <p class="diagram-caption">Figure 1: Complete system architecture — 5-layer topology with data flow directions</p>
+  </div>
+</section>
+
+<!-- COMPONENT MAP -->
+<section id="arch-components">
+  <h2>Component Map</h2>
+  <p class="section-subtitle">All major components organized by layer with file locations and responsibilities.</p>
+
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>Component</th><th>File Location</th><th>Responsibility</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="badge badge-phase">Client</span></td><td>Web App (Next.js)</td><td><code>apps/web/</code></td><td>21 pages, 12 hook files, 4 Zustand stores, SSE integration</td></tr>
+      <tr><td><span class="badge badge-phase">Client</span></td><td>@repo/shared</td><td><code>packages/shared/</code></td><td>16 Zod entity schemas, 15 enums, API types</td></tr>
+      <tr><td><span class="badge badge-phase">API</span></td><td>Fastify Server</td><td><code>apps/api/src/server.ts</code></td><td>18 route modules, CORS, rate limiter, SSE plugin, global error handler</td></tr>
+      <tr><td><span class="badge badge-phase">API</span></td><td>Auth Module</td><td><code>routes/auth.ts</code></td><td>bcrypt hashing, session tokens (7-day), register/login/logout</td></tr>
+      <tr><td><span class="badge badge-phase">API</span></td><td>API Key Manager</td><td><code>routes/api-keys.ts</code></td><td>AES-256-GCM encrypted storage, key resolution, never exposes raw keys</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>GoalSeekingLoop</td><td><code>orchestrator/goal-seeking-loop.ts</code></td><td>Core engine — iterative 8-stage pipeline, quality tracking, pause/resume</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>ActionPlanner</td><td><code>orchestrator/action-planner.ts</code></td><td>9 corrective action types, stop condition evaluation, improvement instructions</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>OutputAnalyzer</td><td><code>orchestrator/output-analyzer.ts</code></td><td>11 issue types, quality scoring (0-1), schema validation, field tracking</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>PromptRegistry</td><td><code>orchestrator/prompt-registry.ts</code></td><td>Versioned prompts, per-version metrics, improvement detection</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>MetaPromptService</td><td><code>orchestrator/meta-prompt.service.ts</code></td><td>Self-improvement — generates improved prompts from failure reports</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>ConsensusEvaluator</td><td><code>orchestrator/consensus-evaluator.ts</code></td><td>Deterministic 8-rule consensus algorithm</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>DeliberationServices</td><td><code>orchestrator/services.ts</code></td><td>Model I/O layer — wraps all LLM calls behind unified interface</td></tr>
+      <tr><td><span class="badge badge-phase">Orch</span></td><td>ServiceBuilder</td><td><code>orchestrator/service-builder.ts</code></td><td>Dependency injection — wires ModelGateway, SearchAdapter, PromptRegistry</td></tr>
+      <tr><td><span class="badge badge-phase">Service</span></td><td>ModelGateway</td><td><code>packages/model-gateway/src/gateway.ts</code></td><td>Retry logic, callJson with Zod validation, call recording to DB</td></tr>
+      <tr><td><span class="badge badge-phase">Service</span></td><td>Provider Adapters</td><td><code>model-gateway/src/adapters/</code></td><td>OpenAI, OpenRouter, Ollama, Mock adapters</td></tr>
+      <tr><td><span class="badge badge-phase">Service</span></td><td>Search Adapters</td><td><code>model-gateway/src/adapters/search.adapters.ts</code></td><td>Mock, Manual, Searxng, SerpApi, WebSearch adapters</td></tr>
+      <tr><td><span class="badge badge-phase">Data</span></td><td>PostgreSQL + Prisma</td><td><code>apps/api/prisma/schema.prisma</code></td><td>30+ models — projects, claims, evidence, reviews, critiques, decisions, runs</td></tr>
+      <tr><td><span class="badge badge-phase">Data</span></td><td>Redis + BullMQ</td><td><code>orchestrator/worker.ts</code></td><td>Job queue — "deliberate" queue, concurrency 2, rate limit 5/sec</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- DATA FLOW -->
+<section id="arch-dataflow">
+  <h2>Data Flow</h2>
+  <p class="section-subtitle">Request lifecycle from user action to database persistence.</p>
+
+  <h3>Run Execution Flow</h3>
+  <div class="flow-steps">
+    <div class="flow-step">POST /projects/:id/runs</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">BullMQ Queue</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Worker picks job</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">buildServices()</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">GoalSeekingLoop.run()</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Stage Pipeline (8 stages × N iterations)</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">ModelGateway → LLM</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">RunEvent → DB</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">SSE → Frontend</div>
+  </div>
+
+  <h3>SSE Event Pipeline</h3>
+  <div class="flow-steps">
+    <div class="flow-step">GoalSeekingLoop emits event</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">RunEventService persists</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">RunEvent table (append-only)</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">GET /runs/:id/events polls DB</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">SSE stream to client</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">useSSE() → runStore.addEvent()</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Zustand re-renders components</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 2: DEEP BACKEND ANALYSIS -->
+<!-- ============================================================ -->
+<section id="orchestrator">
+  <h2>2. Deep Backend Analysis</h2>
+  <p class="section-subtitle">Detailed examination of the orchestrator, workflow engine, and state management patterns.</p>
+
+  <h3>Orchestrator Engine</h3>
+  <p>The <code>GoalSeekingLoop</code> (~1062 lines) is the central brain of the system. It replaces the earlier <code>DeliberationOrchestrator</code> with an adaptive iteration loop that executes up to <code>maxIterations</code> times.</p>
+
+  <h4>Three Loop Modes</h4>
+  <table>
+    <thead><tr><th>Mode</th><th>Quality Threshold</th><th>Self-Improvement</th><th>Adversarial Probe</th><th>Corrective Actions</th></tr></thead>
+    <tbody>
+      <tr><td><code>standard</code></td><td>0.75</td><td>Off</td><td>Off</td><td>Limited (rerun_stage only)</td></tr>
+      <tr><td><code>self_improving</code></td><td>0.60</td><td>On — MetaPromptService</td><td>Off</td><td>Full 9 action types</td></tr>
+      <tr><td><code>adversarial</code></td><td>0.60</td><td>On — MetaPromptService</td><td>On — generates counter-evidence</td><td>Full 9 action types</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Stage Execution with Quality Wrapper</h4>
+  <p>Every stage passes through <code>runStageWithQuality()</code> which wraps execution with:</p>
+  <ol>
+    <li>Records <code>goal_loop.stage_started</code> event</li>
+    <li>Executes the stage function</li>
+    <li>Validates output against Zod schema via <code>OutputAnalyzer</code></li>
+    <li>Records quality report in <code>allQualityReports</code></li>
+    <li>Updates <code>PromptRegistry</code> with call metrics</li>
+    <li>On failure: if self_improving mode + MetaPromptService available → attempts prompt improvement and retries once</li>
+    <li>Records recovery/unrecoverable events</li>
+  </ol>
+
+  <h4>Stage-to-Role Mapping</h4>
+  <table>
+    <thead><tr><th>Stage</th><th>PromptRegistry Role</th><th>Output Schema</th></tr></thead>
+    <tbody>
+      <tr><td>extraction</td><td><code>claim_extraction</code></td><td><code>ClaimExtractionOutputSchema</code></td></tr>
+      <tr><td>evidence_assessment</td><td><code>evidence_assessment</code></td><td><code>EvidenceAssessmentOutputSchema</code></td></tr>
+      <tr><td>gap_detection</td><td><code>evidence_gap_analyst</code></td><td><code>EvidenceGapAnalysisOutputSchema</code></td></tr>
+      <tr><td>review</td><td><code>independent_reviewer</code></td><td><code>IndependentReviewOutputSchema</code></td></tr>
+      <tr><td>critique</td><td><code>critic</code></td><td><code>CrossCritiqueOutputSchema</code></td></tr>
+      <tr><td>critique_response</td><td><code>critique_responder</code></td><td><code>CritiqueResponseOutputSchema</code></td></tr>
+      <tr><td>goal_evaluation</td><td><code>goal_evaluator</code></td><td><code>GoalAchievementOutputSchema</code></td></tr>
+      <tr><td>consensus</td><td><code>consensus_voter</code></td><td><code>ConsensusVoteOutputSchema</code></td></tr>
+      <tr><td>revision</td><td><code>revision_writer</code></td><td><code>IdeaRevisionOutputSchema</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="workflow">
+  <h3>Workflow Pipeline</h3>
+  <p>The iterative pipeline executes these stages in sequence per iteration:</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Stage</th><th>Input</th><th>Output</th><th>Persisted</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Claim Extraction</td><td>IdeaVersion + goal</td><td>Claims, Hypotheses, OpenQuestions</td><td>Claim, Hypothesis records</td></tr>
+      <tr><td>2</td><td>Evidence Discovery</td><td>Claims requiring evidence</td><td>Search results → Evidence</td><td>Evidence records (pending_review)</td></tr>
+      <tr><td>3</td><td>Evidence Assessment</td><td>Evidence + Claims</td><td>Reliability/Relevance/Verdict per model</td><td>EvidenceAssessment records</td></tr>
+      <tr><td>3b</td><td>Adversarial Probe</td><td>Claims (adversarial mode only)</td><td>Counter-evidence</td><td>Evidence records (isCounter=true)</td></tr>
+      <tr><td>4</td><td>Gap Detection</td><td>Claims + Evidence</td><td>Missing/weak/contradictory gaps</td><td>Event only</td></tr>
+      <tr><td>5</td><td>Independent Reviews</td><td>IdeaVersion + Claims + Evidence</td><td>Per-model review with verdict</td><td>ModelReview records</td></tr>
+      <tr><td>6</td><td>Cross-Critiques</td><td>Reviews + Claims + Evidence</td><td>Targeted critiques</td><td>Critique records</td></tr>
+      <tr><td>6b</td><td>Critique Responses</td><td>Critiques + original position</td><td>Accept/Reject/Partial</td><td>CritiqueResponse records</td></tr>
+      <tr><td>7</td><td>Goal Evaluation</td><td>IdeaVersion + all context</td><td>Fully/Mostly/Partially/Barely/Not</td><td>Event only</td></tr>
+      <tr><td>8</td><td>Consensus</td><td>Votes + Reviews + Claims + Evidence</td><td>Consensus status</td><td>ConsensusVote records</td></tr>
+      <tr><td>9</td><td>Decision</td><td>All context</td><td>DecisionRecord</td><td>DecisionRecord</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Exit Criteria</h4>
+  <ul>
+    <li><strong>Goal achieved + decision created</strong> → STOP</li>
+    <li><strong>Max iterations reached</strong> → STOP (create max_rounds_reached decision)</li>
+    <li><strong>3+ consecutive stage failures</strong> with iteration >= 2 → STOP</li>
+  </ul>
+
+  <h4>Corrective Actions (ActionPlanner)</h4>
+  <table>
+    <thead><tr><th>Action Type</th><th>Trigger</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>improve_prompt</code></td><td>Failed stage or quality < 0.5</td><td>MetaPromptService generates improved prompt</td></tr>
+      <tr><td><code>rerun_stage</code></td><td>Failed stage</td><td>Stage re-executed in next iteration</td></tr>
+      <tr><td><code>switch_model</code></td><td>Consensus reject/needs_more after 2+ iters</td><td>Alternative model selected</td></tr>
+      <tr><td><code>skip_stage</code></td><td>Stage passing consistently</td><td>Stage skipped in next iteration</td></tr>
+      <tr><td><code>adjust_temperature</code></td><td>Calibration error > 0.2</td><td>Temperature adjusted for model calls</td></tr>
+      <tr><td><code>escalate_to_user</code></td><td>Unrecoverable failure</td><td>Run paused, user notified</td></tr>
+      <tr><td><code>add_context</code></td><td>Missing context detected</td><td>Enriched context in next iteration</td></tr>
+      <tr><td><code>request_more_evidence</code></td><td>Evidence gaps found</td><td>New evidence search tasks created</td></tr>
+      <tr><td><code>reduce_scope</code></td><td>Too many claims</td><td>Focus on critical claims only</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="state">
+  <h3>State Management Patterns</h3>
+
+  <h4>Database as Source of Truth</h4>
+  <p>All business state persists through Prisma to PostgreSQL. The system avoids significant in-memory state for business logic, preferring event-sourcing patterns:</p>
+
+  <table>
+    <thead><tr><th>State Type</th><th>Storage</th><th>Pattern</th></tr></thead>
+    <tbody>
+      <tr><td>Project/Entity state</td><td>Prisma models</td><td>CRUD with version tracking</td></tr>
+      <tr><td>Run progress</td><td>RunEvent table</td><td>Append-only event log</td></tr>
+      <tr><td>Stage status</td><td>RunStage table</td><td>State machine (PENDING→IN_PROGRESS→COMPLETED/FAILED/PAUSED)</td></tr>
+      <tr><td>LLM call audit</td><td>ModelCall table</td><td>Every call recorded with messages, response, usage</td></tr>
+      <tr><td>Context tracking</td><td>ContextManifest table</td><td>What was included in each model call</td></tr>
+      <tr><td>Prompt versions</td><td>PromptVersion table + in-memory</td><td>Optional DB persistence, in-memory for current loop</td></tr>
+      <tr><td>Job queue</td><td>Redis (BullMQ)</td><td>Durable job state with retry</td></tr>
+      <tr><td>SSE clients</td><td>In-memory Map</td><td>Per-project client sets (ephemeral)</td></tr>
+      <tr><td>Rate limiter</td><td>In-memory Map</td><td>Auto-sweeping bucket counters</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Run Lifecycle State Machine</h4>
+  <div class="flow-steps" style="flex-wrap: wrap;">
+    <div class="flow-step" style="border-color: var(--accent-blue);">Created</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step" style="border-color: var(--accent-purple);">Queued</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step" style="border-color: var(--accent-orange);">Running</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step" style="border-color: var(--accent-green);">Completed</div>
+  </div>
+  <p style="margin-top:8px;">Branch states: <code>Paused</code> (from Running, via checkpoint), <code>Failed</code> (from Running), <code>Cancelled</code> (from Queued or Running). Resume re-enqueues to BullMQ.</p>
+</section>
+
+<section id="self-improvement">
+  <h3>Self-Improvement System</h3>
+  <p>The self-improvement loop is a feedback mechanism that automatically improves prompt quality during a run:</p>
+
+  <div class="flow-steps">
+    <div class="flow-step">Stage fails or low quality</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">OutputAnalyzer detects issue</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">PromptRegistry.analyzeForImprovement()</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">MetaPromptService.improve()</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Model generates improved prompt</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">PromptRegistry.improve() creates new version</div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-step">Next iteration uses improved prompt</div>
+  </div>
+
+  <h4>OutputAnalyzer Issue Detection</h4>
+  <p>Detects 11 issue types: <code>empty_output</code>, <code>schema_validation_failed</code>, <code>parse_error</code>, <code>zero_uuids</code>, <code>placeholder_content</code>, <code>wrong_type</code>, <code>missing_required_fields</code>, <code>invalid_enum_value</code>, <code>suspicious_pattern</code>, <code>truncated_output</code>, <code>excessive_length</code>. Produces a quality score from 0 to 1.</p>
+
+  <h4>PromptRegistry Metrics</h4>
+  <p>Per-version tracking: <code>totalCalls</code>, <code>successfulCalls</code>, <code>schemaFailures</code>, <code>emptyOutputs</code>, <code>avgQualityScore</code>, <code>failurePatterns</code> (Map of pattern → count). Improvement is triggered when failure rate exceeds threshold (default 0.7) with minimum 3 calls.</p>
+</section>
+
+<section id="model-gateway">
+  <h3>Model Gateway Architecture</h3>
+
+  <table>
+    <thead><tr><th>Adapter</th><th>Protocol</th><th>Streaming</th><th>JSON Mode</th><th>Timeout</th></tr></thead>
+    <tbody>
+      <tr><td><code>OpenAICompatibleAdapter</code></td><td>REST /chat/completions</td><td>SSE</td><td>response_format</td><td>60s</td></tr>
+      <tr><td><code>OpenRouterAdapter</code></td><td>REST (OpenRouter endpoint)</td><td>SSE</td><td>response_format</td><td>120s</td></tr>
+      <tr><td><code>OllamaAdapter</code></td><td>REST /api/chat</td><td>NDJSON</td><td>format: json</td><td>120s</td></tr>
+      <tr><td><code>MockModelAdapter</code></td><td>In-memory</td><td>Single chunk</td><td>N/A</td><td>N/A</td></tr>
+    </tbody>
+  </table>
+
+  <p>The <code>ModelGateway.callJson()</code> method provides schema-validated JSON output: converts Zod → JSON Schema, appends to prompt, calls with <code>responseFormat: 'json'</code>, validates response, and on failure sends parse error feedback for self-correction (up to 3 retries).</p>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 3: CRITICAL GAPS & PRIORITIZED PLAN -->
+<!-- ============================================================ -->
+<section id="gaps">
+  <h2>3. Critical Gaps Assessment</h2>
+  <p class="section-subtitle">Identified gaps ranked by risk to system correctness, data integrity, and user experience.</p>
+
+  <div class="stat-row" style="margin-bottom: 24px;">
+    <div class="stat"><div class="stat-num" style="color: var(--accent-red);">5</div><div class="stat-label">Critical</div></div>
+    <div class="stat"><div class="stat-num" style="color: var(--accent-orange);">7</div><div class="stat-label">High</div></div>
+    <div class="stat"><div class="stat-num" style="color: var(--accent-blue);">6</div><div class="stat-label">Medium</div></div>
+    <div class="stat"><div class="stat-num" style="color: var(--accent-green);">4</div><div class="stat-label">Low</div></div>
+  </div>
+
+  <div class="risk-card">
+    <div class="risk-header">
+      <span class="badge badge-missing">P0 — CRITICAL</span>
+      <span class="risk-title">graph.ts Enum Literal Type Mismatches</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The <code>routes/graph.ts</code> file has pre-existing TypeScript errors where Prisma enum values (e.g., <code>status: string</code>) don't match expected literal types (<code>"supported" | "contradicted" | ...</code>). This causes type check failures across the API build.<br>
+      <strong>Root cause:</strong> Prisma generates <code>string</code> for some enum fields; explicit type narrowing is missing.<br>
+      <strong>Risk:</strong> Build failures, potential runtime type mismatches, broken CI/CD.
+    </div>
+  </div>
+
+  <div class="risk-card">
+    <div class="risk-header">
+      <span class="badge badge-missing">P0 — CRITICAL</span>
+      <span class="risk-title">OpenAPI Schema Not Generated / Out of Sync</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The spec requires <code>schemas/openapi.yaml</code> to cover the full API surface. No OpenAPI spec is auto-generated from the route definitions.<br>
+      <strong>Risk:</strong> API contract drift between frontend and backend. No machine-readable API documentation. Spec doc says "MVP fails if schemas/openapi.yaml covers only a subset."
+    </div>
+  </div>
+
+  <div class="risk-card">
+    <div class="risk-header">
+      <span class="badge badge-missing">P0 — CRITICAL</span>
+      <span class="risk-title">No End-to-End MVP Acceptance Test</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The 14-step acceptance scenario in <code>docs/10-mvp-acceptance.md</code> has no automated test. The full pipeline (create project → extract claims → evidence → reviews → critiques → revision → consensus → decision) is never tested end-to-end with mock models.<br>
+      <strong>Risk:</strong> Regressions can silently break the core value proposition. No confidence in system correctness.
+    </div>
+  </div>
+
+  <div class="risk-card">
+    <div class="risk-header">
+      <span class="badge badge-missing">P0 — CRITICAL</span>
+      <span class="risk-title">Context Service — Lazy Loading Not Implemented</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The spec defines a lazy loading protocol where models can request additional context mid-call. The <code>ContextService</code> has basic context building but no lazy loading mechanism.<br>
+      <strong>Risk:</strong> Models may operate with insufficient context, producing lower-quality outputs. No mechanism to handle context window overflow gracefully.
+    </div>
+  </div>
+
+  <div class="risk-card">
+    <div class="risk-header">
+      <span class="badge badge-missing">P0 — CRITICAL</span>
+      <span class="risk-title">Semantic Search (pgvector) Not Active</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> pgvector extension exists in schema (<code>SourceEmbedding</code> model) but semantic search is gated by <code>EMBEDDING_ENABLED=false</code>. No embedding generation pipeline exists. Cross-project search uses SQL <code>LIKE</code> instead of vector similarity.<br>
+      <strong>Risk:</strong> Cross-project search quality is degraded. Spec says pgvector setup must be functional.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">No Automated Lint/Format Enforcement</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> No ESLint or Prettier configuration in the repo. Code style drift is unchecked. The spec mentions "if lint is configured" but it isn't.<br>
+      <strong>Risk:</strong> Inconsistent code style across contributors. Harder code reviews.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">Web App Type Errors in Production Hooks</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> While we fixed many type errors in the previous session, several React Query hooks still return <code>data: {}</code> types due to missing generics on <code>parseJson(res)</code>. Components use type assertions to work around this.<br>
+      <strong>Risk:</strong> Runtime data access errors if response shapes change. TypeScript doesn't catch actual bugs.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">Claim Dependency Graph — Frontend Route Missing</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The spec defines <code>/projects/[id]/claim-dependencies</code> route and visual graph. The backend API exists but the frontend page is not implemented.<br>
+      <strong>Risk:</strong> Feature gap visible in navigation. Users cannot visualize claim dependencies.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">Argument Map (Toulmin) — No DB Model</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The spec defines an <code>ArgumentMap</code> Prisma model for Toulmin argument exports. The model is not in the schema, and the endpoint returns hardcoded/empty data.<br>
+      <strong>Risk:</strong> Feature cannot persist. Reproducibility Pack and Argument Map features are non-functional.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">No CI/CD Pipeline</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> No GitHub Actions or CI configuration. No automated test runs, type checks, or build verification on PRs.<br>
+      <strong>Risk:</strong> Regressions merge silently. No quality gate.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">No E2E Browser Tests</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The 7 frontend smoke tests exist but only test rendering. No Playwright/Cypress tests verify user flows (create project → start run → view decision).<br>
+      <strong>Risk:</strong> UI regressions go undetected.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">Rate Limiter — No Per-User Tracking</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The rate limiter uses IP-based buckets. In a multi-user scenario, all requests from same IP share limits. No per-user or per-project rate limiting.<br>
+      <strong>Risk:</strong> Single user can starve others. DoS vulnerability.
+    </div>
+  </div>
+
+  <div class="risk-card medium">
+    <div class="risk-header">
+      <span class="badge badge-partial">P1 — HIGH</span>
+      <span class="risk-title">No Database Backup/Restore Strategy</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> No documented backup procedure. No pg_dump scripts. Data loss risk for long-running research projects.<br>
+      <strong>Risk:</strong> Unrecoverable data loss.
+    </div>
+  </div>
+
+  <div class="risk-card" style="border-left-color: var(--accent-blue);">
+    <div class="risk-header">
+      <span class="badge badge-phase">P2 — MEDIUM</span>
+      <span class="risk-title">No Docker Compose Health Checks</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> docker-compose.yml lacks health checks for PostgreSQL and Redis. Services may start before dependencies are ready.<br>
+      <strong>Risk:</strong> Race conditions during startup. Flaky development environment.
+    </div>
+  </div>
+
+  <div class="risk-card" style="border-left-color: var(--accent-blue);">
+    <div class="risk-header">
+      <span class="badge badge-phase">P2 — MEDIUM</span>
+      <span class="risk-title">No Request ID / Correlation Tracing</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> No unique request ID attached to API requests. Difficult to trace errors across log entries. No distributed tracing.<br>
+      <strong>Risk:</strong> Harder debugging in production.
+    </div>
+  </div>
+
+  <div class="risk-card" style="border-left-color: var(--accent-blue);">
+    <div class="risk-header">
+      <span class="badge badge-phase">P2 — MEDIUM</span>
+      <span class="risk-title">No Structured Error Logging</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> Logger exists but errors aren't consistently structured with projectId/runId context. Stack traces may leak in API responses.<br>
+      <strong>Risk:</strong> Harder to diagnose production issues.
+    </div>
+  </div>
+
+  <div class="risk-card" style="border-left-color: var(--accent-blue);">
+    <div class="risk-header">
+      <span class="badge badge-phase">P2 — MEDIUM</span>
+      <span class="risk-title">No Migration Rollback Strategy</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> Prisma migrations are forward-only. No documented rollback procedure for schema changes.<br>
+      <strong>Risk:</strong> Difficult to recover from bad migrations.
+    </div>
+  </div>
+
+  <div class="risk-card" style="border-left-color: var(--accent-blue);">
+    <div class="risk-header">
+      <span class="badge badge-phase">P2 — MEDIUM</span>
+      <span class="risk-title">SSE Polling Interval Fixed at 1s</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The SSE endpoint polls DB every 1 second regardless of load. Under high concurrency, this creates unnecessary DB load.<br>
+      <strong>Risk:</strong> Performance degradation with many concurrent runs.
+    </div>
+  </div>
+
+  <div class="risk-card low">
+    <div class="risk-header">
+      <span class="badge badge-done">P3 — LOW</span>
+      <span class="risk-title">No API Versioning</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> All routes are at root level (<code>/projects</code>, not <code>/api/v1/projects</code>). No versioning strategy.<br>
+      <strong>Risk:</strong> Breaking changes affect all clients simultaneously. Low risk for single-team local-first app.
+    </div>
+  </div>
+
+  <div class="risk-card low">
+    <div class="risk-header">
+      <span class="badge badge-done">P3 — LOW</span>
+      <span class="risk-title">No Webhook / External Integration Points</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> No webhook system for external notifications (email, Slack, etc.).<br>
+      <strong>Risk:</strong> User must actively check the UI. Low priority for MVP.
+    </div>
+  </div>
+
+  <div class="risk-card low">
+    <div class="risk-header">
+      <span class="badge badge-done">P3 — LOW</span>
+      <span class="risk-title">No Data Export to External Formats</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> JSON and Markdown export exist but no CSV, BibTeX, or RIS export for academic workflows.<br>
+      <strong>Risk:</strong> Minor workflow friction for academic users.
+    </div>
+  </div>
+
+  <div class="risk-card low">
+    <div class="risk-header">
+      <span class="badge badge-done">P3 — LOW</span>
+      <span class="risk-title">No Mobile Responsive Optimization</span>
+    </div>
+    <div class="risk-desc">
+      <strong>Impact:</strong> The UI uses basic responsive breakpoints but hasn't been tested on mobile devices. Inspector panel and complex tables may not work well on small screens.<br>
+      <strong>Risk:</strong> Local-first app primarily used on desktop. Low priority.
+    </div>
+  </div>
+</section>
+
+<section id="priorities">
+  <h2>Prioritized Fix Plan</h2>
+  <p class="section-subtitle">Ordered by risk reduction per unit of effort. Each phase should be completed before moving to the next.</p>
+
+  <h3>Phase 1: Build Integrity (Week 1)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Task</th><th>Effort</th><th>Risk Eliminated</th></tr></thead>
+    <tbody>
+      <tr><td>1.1</td><td>Fix <code>graph.ts</code> enum literal type mismatches — add explicit type narrowing for Prisma outputs</td><td>2h</td><td>API build failures, CI/CD blockers</td></tr>
+      <tr><td>1.2</td><td>Add ESLint + Prettier configuration with pre-commit hooks</td><td>3h</td><td>Code style drift, review friction</td></tr>
+      <tr><td>1.3</td><td>Fix remaining web app TypeScript generics on React Query hooks</td><td>4h</td><td>Runtime type errors, fragile data access</td></tr>
+      <tr><td>1.4</td><td>Add CI pipeline: typecheck + test + lint on every PR</td><td>3h</td><td>Regression blindness</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase 2: Core Correctness (Week 2)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Task</th><th>Effort</th><th>Risk Eliminated</th></tr></thead>
+    <tbody>
+      <tr><td>2.1</td><td>Build end-to-end MVP acceptance test (14-step scenario with mock models)</td><td>8h</td><td>Core pipeline regressions</td></tr>
+      <tr><td>2.2</td><td>Generate OpenAPI spec from route definitions (fastify-swagger or manual)</td><td>4h</td><td>API contract drift</td></tr>
+      <tr><td>2.3</td><td>Add per-user rate limiting (session token-based, not IP-based)</td><td>3h</td><td>DoS vulnerability, multi-user fairness</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase 3: Feature Completeness (Week 3-4)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Task</th><th>Effort</th><th>Risk Eliminated</th></tr></thead>
+    <tbody>
+      <tr><td>3.1</td><td>Implement Context Service lazy loading protocol</td><td>6h</td><td>Insufficient model context</td></tr>
+      <tr><td>3.2</td><td>Add ArgumentMap Prisma model + persistence + export</td><td>4h</td><td>Non-functional feature</td></tr>
+      <tr><td>3.3</td><td>Build claim-dependencies frontend page with force-directed graph</td><td>6h</td><td>Missing UI feature</td></tr>
+      <tr><td>3.4</td><td>Implement embedding generation pipeline for pgvector</td><td>8h</td><td>Degraded semantic search</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Phase 4: Operational Hardening (Week 5)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Task</th><th>Effort</th><th>Risk Eliminated</th></tr></thead>
+    <tbody>
+      <tr><td>4.1</td><td>Add Docker Compose health checks for PostgreSQL and Redis</td><td>1h</td><td>Startup race conditions</td></tr>
+      <tr><td>4.2</td><td>Add request ID middleware + structured error logging</td><td>3h</td><td>Debugging difficulty</td></tr>
+      <tr><td>4.3</td><td>Add pg_dump backup script + documented restore procedure</td><td>2h</td><td>Data loss risk</td></tr>
+      <tr><td>4.4</td><td>Implement Playwright E2E tests for critical user flows</td><td>8h</td><td>UI regressions</td></tr>
+      <tr><td>4.5</td><td>Make SSE polling adaptive (backoff under load, shorter when active)</td><td>3h</td><td>Performance under concurrency</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="risks">
+  <h2>Risk Assessment Matrix</h2>
+  <table>
+    <thead>
+      <tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Score</th><th>Mitigation</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Build breakage from type errors</td><td>High</td><td>High</td><td style="color:var(--accent-red);font-weight:700;">9</td><td>Phase 1.1 + 1.4 (fix + CI gate)</td></tr>
+      <tr><td>Core pipeline regression</td><td>Medium</td><td>Critical</td><td style="color:var(--accent-red);font-weight:700;">12</td><td>Phase 2.1 (E2E acceptance test)</td></tr>
+      <tr><td>API contract drift</td><td>High</td><td>Medium</td><td style="color:var(--accent-orange);font-weight:700;">6</td><td>Phase 2.2 (OpenAPI spec)</td></tr>
+      <tr><td>Context starvation</td><td>Medium</td><td>High</td><td style="color:var(--accent-orange);font-weight:700;">8</td><td>Phase 3.1 (lazy loading)</td></tr>
+      <tr><td>Data loss</td><td>Low</td><td>Critical</td><td style="color:var(--accent-orange);font-weight:700;">6</td><td>Phase 4.3 (backup strategy)</td></tr>
+      <tr><td>DoS via rate limit bypass</td><td>Medium</td><td>Medium</td><td style="color:var(--accent-blue);font-weight:700;">6</td><td>Phase 2.3 (per-user limiting)</td></tr>
+      <tr><td>UI regressions undetected</td><td>High</td><td>Low</td><td style="color:var(--accent-blue);font-weight:700;">4</td><td>Phase 4.4 (Playwright E2E)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<!-- PART 4: COMPLETE REQUIREMENTS DOCUMENT -->
+<!-- ============================================================ -->
+<section id="req-mvp">
+  <h2>4. Complete Requirements Checklist</h2>
+  <p class="section-subtitle">All requirements from every specification document, with implementation status.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('tab-mvp')">MVP Acceptance</button>
+    <button class="tab-btn" onclick="showTab('tab-spec')">Implementation Spec</button>
+    <button class="tab-btn" onclick="showTab('tab-data')">Data Model</button>
+    <button class="tab-btn" onclick="showTab('tab-api')">API Contract</button>
+    <button class="tab-btn" onclick="showTab('tab-orch')">Orchestration</button>
+    <button class="tab-btn" onclick="showTab('tab-ui')">UI Spec</button>
+    <button class="tab-btn" onclick="showTab('tab-security')">Security</button>
+    <button class="tab-btn" onclick="showTab('tab-testing')">Testing</button>
+    <button class="tab-btn" onclick="showTab('tab-features')">New Features</button>
+  </div>
+
+  <!-- MVP ACCEPTANCE -->
+  <div id="tab-mvp" class="tab-content active">
+    <h3>MVP Acceptance Criteria (docs/10-mvp-acceptance.md)</h3>
+
+    <h4>Preconditions</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">PostgreSQL running<div class="check-note">Docker Compose configured with pgvector image</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Redis running<div class="check-note">Docker Compose configured</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">API server running<div class="check-note">Fastify on port 4000</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Web app running<div class="check-note">Next.js on port 3000</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">At least three mock models configured<div class="check-note">Seed script creates 3 mock models</div></div></li>
+    </ul>
+
+    <h4>Acceptance Steps</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 1 — Create project<div class="check-note">POST /projects creates ResearchProject + IdeaVersion v1 + RawEvent. Dashboard opens.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 2 — Configure models<div class="check-note">3 mock models in settings. Test endpoint passes. No secrets in frontend.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 3 — Extract claims<div class="check-note">Mock adapter returns 5+ claims. Claim records created in DB.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 4 — Add evidence<div class="check-note">Manual or mock search creates 2+ evidence items. Starts as pending_review.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 5 — Evidence assessment<div class="check-note">3 mock models assess evidence. EvidenceAssessment records created.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 6 — Independent reviews<div class="check-note">3 ModelReview records with verdict, strengths, weaknesses, supported/unsupported claims.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 7 — Cross critique<div class="check-note">At least 1 Critique created with severity, type, whyItMatters.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 8 — Critique response<div class="check-note">CritiqueResponse created with accept/partial_accept verdict.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 9 — Revision<div class="check-note">IdeaVersion v2 created with changesFromPrevious.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 10 — Re-evaluation<div class="check-note">New reviews reference v2.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 11 — Consensus check<div class="check-note">Returns one of: full_consensus, qualified_consensus, no_consensus, etc.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 12 — Decision record<div class="check-note">DecisionRecord with all required fields populated.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 13 — UI inspection<div class="check-note">Dashboard, Timeline, Evidence Commons, Idea Evolution, Decision Ledger all exist.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Step 14 — Export<div class="check-note">JSON and Markdown export endpoints exist. No API keys included.</div></div></li>
+    </ul>
+
+    <h4>Hard Blockers</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Decision cannot be created without model votes<div class="check-note">Enforced in DecisionService</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Accepted claim requires evidence or user-premise status<div class="check-note">Enforced in consensus logic</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">RawEvent is immutable<div class="check-note">No update/delete endpoints for RawEvent</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Model output must pass Zod validation<div class="check-note">ModelGateway.callJson() validates against schemas</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Invalid model JSON is not silently accepted<div class="check-note">Retry + correction path in callJson()</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">API key not visible in frontend<div class="check-note">apiKeyRef only, AES-256-GCM encrypted storage</div></div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">Run can complete with mock models<div class="check-note">Mock adapter handles all stages. E2E test not yet automated.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">UI shows final decision<div class="check-note">Decision Ledger page implemented</div></div></li>
+    </ul>
+
+    <h4>Final Hard Blockers</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">.codex/config.toml exists with content</div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">schemas/openapi.yaml covers full API surface<div class="check-note">Not auto-generated yet</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">pgvector extension enabled<div class="check-note">SQL migration template exists</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Frontend uses Zustand<div class="check-note">4 stores: runStore, inspectorStore, modelSelectionStore, uiStore</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">MockSearchAdapter is deterministic<div class="check-note">Substring matching against fixtures</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">templates/mock-search-results.json exists<div class="check-note">Present in both templates/ and apps/api/templates/</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Demo scenario works with mock models only<div class="check-note">No real API keys required</div></div></li>
+    </ul>
+  </div>
+
+  <!-- IMPLEMENTATION SPEC -->
+  <div id="tab-spec" class="tab-content">
+    <h3>Implementation Spec (docs/01-implementation-spec.md)</h3>
+
+    <h4>Fixed Implementation Decisions</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Package manager: pnpm</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Node: 20.x</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Frontend router: Next.js App Router</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Server-state: TanStack Query</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Global UI state: Zustand</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Backend: Fastify</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ORM: Prisma</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Database: PostgreSQL 16 with pgvector</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Queue: Redis + BullMQ</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run progress: Server-Sent Events</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Mock adapters: MockModelAdapter + MockSearchAdapter</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Real adapters: OpenRouter + Ollama + OpenAICompatible</div></li>
+    </ul>
+
+    <h4>Monorepo Structure</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">apps/web/ — Next.js frontend</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">apps/api/ — Fastify backend</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">packages/shared/ — Zod schemas + types</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">packages/model-gateway/ — LLM provider abstraction</div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">packages/prompt-contracts/ — Prompt contract package<div class="check-note">Prompts are in apps/api/src/orchestrator/prompts.ts, not a separate package</div></div></li>
+    </ul>
+
+    <h4>Core Backend Modules</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">project — ProjectService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">model-config — ModelConfigService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">idea-version — IdeaVersionService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">claim — ClaimService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">evidence — EvidenceService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">evidence-assessment — EvidenceAssessmentService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">model-review — ModelReviewService (via DeliberationServices)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">critique — CritiqueService (via DeliberationServices)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">revision — RevisionService (via DeliberationServices)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">consensus — ConsensusService (via ConsensusEvaluator)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">decision — DecisionService (via DeliberationServices)</div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">context — ContextService<div class="check-note">Basic context building exists. Lazy loading not implemented.</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">raw-event — RawEventService (EventService)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">run-event — RunEventService</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">orchestrator — GoalSeekingLoop + all sub-components</div></li>
+    </ul>
+
+    <h4>Hard Invariants</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">All model JSON outputs pass Zod validation</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Accepted claim requires accepted/caution evidence or user premise</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">RawEvent is immutable</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Every DecisionRecord contains IdeaVersion ID</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Every DecisionRecord contains model final votes</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Every model call is saved (ModelCall table)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Important model calls have ContextManifest</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No API key returned to frontend</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Invalid model output cannot silently proceed</div></li>
+    </ul>
+  </div>
+
+  <!-- DATA MODEL -->
+  <div id="tab-data" class="tab-content">
+    <h3>Data Model (docs/02-data-model.md)</h3>
+
+    <h4>MVP Tables</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ResearchProject</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ResearchSession</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">IdeaVersion</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Claim</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Hypothesis</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ResearchTask</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Evidence</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">EvidenceAssessment</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ModelConfig</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ModelCall</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ModelReview</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Critique</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">CritiqueResponse</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">DecisionRecord</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ContextManifest</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Summary</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">KnowledgeEdge</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">RawEvent</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">RunEvent</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">SourceEmbedding (pgvector)</div></li>
+    </ul>
+
+    <h4>Post-MVP Tables</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ClaimDependency</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">LiteratureReview</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Annotation</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">EvaluationCriteria</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">EvidenceCustomScore</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">UserPresence</div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">ArgumentMap<div class="check-note">Spec defines model but not in Prisma schema</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ClaimConfidenceHistory</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">User + AuthSession + UserApiKey</div></li>
+    </ul>
+  </div>
+
+  <!-- API CONTRACT -->
+  <div id="tab-api" class="tab-content">
+    <h3>API Contract (docs/03-api-contract.md)</h3>
+
+    <h4>MVP Endpoints</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects — Create project + IdeaVersion v1</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects — List projects</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id — Full dashboard state</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">PATCH /projects/:id — Update metadata</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /models — List configured models (no secrets)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /models — Create model config</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /models/:id/test — Test model call</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/idea-versions — List versions</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /idea-versions/:id — Version detail with claims + critiques</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/idea-versions — Create version</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/claims — List claims (filterable)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /idea-versions/:id/extract-claims — Run extraction</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/evidence — List evidence (filterable)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/evidence — Manual evidence entry</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /claims/:id/search-evidence — Search supporting</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /claims/:id/search-counter-evidence — Search counter</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /evidence/:id/assess — Run model assessments</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/runs — Start deliberation run</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /runs/:id — Run status + events</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /runs/:id/events — SSE stream</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /runs/:id/cancel — Cancel run</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /runs/:id/pause — Pause run</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /runs/:id/resume — Resume run</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/tasks — List tasks</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /tasks/:id/run — Run single task</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/decisions — List decisions</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /decisions/:id — Decision with trace graph</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/export.json — JSON export</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/export.md — Markdown export</div></li>
+    </ul>
+
+    <h4>Post-MVP Endpoints</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /evidence/cross-project-search</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/related-projects/:id</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/evidence/stale</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /evidence/:id/verify</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/runs/compare</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /claims/:id/dependencies</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/claims/dependencies</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/literature-reviews</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/calibration</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/portfolio</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/annotations</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /evidence/:id/provenance</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /projects/:id/evaluation-criteria</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">POST /evidence/:id/scores</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/robustness</div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">POST /projects/:id/argument-map<div class="check-note">Endpoint exists but ArgumentMap model missing from schema</div></div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">POST /projects/:id/reproducibility-pack<div class="check-note">Returns hardcoded data</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">GET /projects/:id/events (SSE) — Live presence</div></li>
+    </ul>
+  </div>
+
+  <!-- ORCHESTRATION -->
+  <div id="tab-orch" class="tab-content">
+    <h3>Orchestration Workflow (docs/04-orchestration-workflow.md)</h3>
+
+    <h4>Pipeline Stages</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Load project and current idea version</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Extract claims if missing or stale</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Create research tasks for claims</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Collect or attach evidence</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Assess evidence using other models</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run independent model reviews</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run cross-critiques</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run critique responses</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Evaluate consensus</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Create decision if consensus reached</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Create revised idea version if needed</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Create follow-up tasks if more evidence needed</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Create unresolved decision after max rounds</div></li>
+    </ul>
+
+    <h4>Run Loop Modes</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">standard — quality threshold 0.75, no meta-prompt, limited corrective actions</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">self_improving — quality threshold 0.60, meta-prompt, full corrective actions</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">adversarial — self_improving + adversarial probe stage</div></li>
+    </ul>
+
+    <h4>Evidence Aggregation Rules</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Accepted direct evidence + no blocking counter → supported</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Only accepted_with_caution → partially_supported</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Accepted counter-evidence contradicts → contradicted/needs_external_validation</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Rejected/irrelevant evidence → cannot support claim</div></li>
+    </ul>
+
+    <h4>Critique Severity Handling</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">low — does not block consensus</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">medium — should be addressed if practical</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">high — triggers revision unless rejected with reason</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">blocking — must be resolved before acceptance</div></li>
+    </ul>
+
+    <h4>Consensus Rules</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Any unresolved blocking critique → needs_revision</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Any unsupported critical claim → needs_more_evidence</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Any reject vote → no_consensus or needs_revision</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Any needs_more_evidence vote → needs_more_evidence</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">All accept → full_consensus</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">All accept or accept_with_reservations → qualified_consensus</div></li>
+    </ul>
+
+    <h4>Context Workflow</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Task instruction in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Current idea version in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Relevant claims in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Accepted evidence in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Counter-evidence in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Open critiques in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Prior decisions in context</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ContextManifest created for each model call</div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">Lazy loading protocol (needsMoreContext + requestedItems)<div class="check-note">Defined in spec but not implemented</div></div></li>
+    </ul>
+
+    <h4>Run Events</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">run.started</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">goal_loop.iteration_started / completed</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">goal_loop.stage_started / completed / failed</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">run.completed / failed</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">idea.version_advanced</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">prompt.improved</div></li>
+    </ul>
+
+    <h4>Cancellation</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Mark active BullMQ jobs cancelled</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Stop scheduling new tasks</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Preserve completed outputs</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Create run.cancelled event</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Do not delete raw events</div></li>
+    </ul>
+  </div>
+
+  <!-- UI SPEC -->
+  <div id="tab-ui" class="tab-content">
+    <h3>UI Spec (docs/06-ui-spec.md)</h3>
+
+    <h4>Frontend State Management</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Server state: TanStack Query</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Global UI state: Zustand</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Form state: React Hook Form allowed</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">URL state: Next.js route params</div></li>
+    </ul>
+
+    <h4>Zustand Stores</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">useRunStore — activeRunId, eventLog, selectedTimelineItemId, runConnectionStatus</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">useInspectorStore — selectedObjectType, selectedObjectId, inspectorOpen</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">useModelSelectionStore — selectedModelIds, maxRounds, runMode, loopMode, searchProvider</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">useUIStore — isRunInProgress</div></li>
+    </ul>
+
+    <h4>Routes</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/ — Project list</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/new — Create project</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id] — Project dashboard</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/timeline — Deliberation timeline</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/evidence — Evidence Commons</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/ideas — Idea evolution</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/decisions — Decision ledger</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/tasks — Research tasks</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/runs/compare — Run Comparison</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/literature-reviews — Literature Reviews</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/graph — Citation Graph + Calibration</div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">/projects/[id]/claim-dependencies — Claim Dependency Graph<div class="check-note">API exists but no frontend page</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/settings/models — Model configuration</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/settings/evaluation-criteria — Evaluation Criteria</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/settings/prompts — Prompt editor</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/settings/search-provider — Search provider settings</div></li>
+    </ul>
+
+    <h4>UI Pages Feature Completeness</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Project dashboard — title, goal, idea version, stats, critical issues, next best action</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Deliberation timeline — visual events with icons</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Evidence Commons — table with filters, quality dashboard, stale evidence tab</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Idea Evolution — version chain visualization with diff views</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Decision Ledger — expandable cards with full detail</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">InspectorPanel — floating right panel for entity details</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run progress — SSE streaming, cancel button, error display</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Empty states — appropriate messages for no claims/evidence/decisions</div></li>
+    </ul>
+  </div>
+
+  <!-- SECURITY -->
+  <div id="tab-security" class="tab-content">
+    <h3>Security &amp; Configuration (docs/09-security-config.md)</h3>
+
+    <h4>API Key Handling</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">API keys stored in server environment variables</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ModelConfig stores only apiKeyRef, not raw key</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Frontend never receives API key values</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">AES-256-GCM encrypted key storage (UserApiKey)</div></li>
+    </ul>
+
+    <h4>Secret Protection</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in frontend localStorage</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in Zustand stores</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in API responses</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in model call logs</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in RawEvent payloads</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in export files</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No secrets in browser URL params</div></li>
+    </ul>
+
+    <h4>Model Output Security</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Model outputs are not executed as code</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">JSON validated with Zod</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Unknown IDs rejected</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">No dangerouslySetInnerHTML usage</div></li>
+    </ul>
+
+    <h4>Authentication</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">bcrypt password hashing (cost factor 12)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Session tokens with 7-day expiry</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Optional/required auth middleware</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">CORS configured for localhost:3000</div></li>
+    </ul>
+
+    <h4>Post-MVP Security (Spec Requirements)</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Encrypted API key storage</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">User authentication</div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">Project-level access control<div class="check-note">requireProjectAccess() exists but no role-based access</div></div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">Audit log UI<div class="check-note">RawEvent exists but no UI to view audit trail</div></div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">Data retention settings<div class="check-note">Not implemented</div></div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">Redaction for sensitive user input<div class="check-note">Not implemented</div></div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">Encrypted exports<div class="check-note">Not implemented</div></div></li>
+    </ul>
+  </div>
+
+  <!-- TESTING -->
+  <div id="tab-testing" class="tab-content">
+    <h3>Testing Plan (docs/07-testing-plan.md)</h3>
+
+    <h4>Unit Tests</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Zod schema tests — valid output passes, missing fields fail, invalid enum fails<div class="check-note">prompts.schemas.test.ts covers all 13 schemas</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Consensus algorithm tests — all 7 consensus rules<div class="check-note">consensus-evaluator.test.ts covers all rules</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">ActionPlanner tests — goal achieved/failed, quality scores, corrective actions<div class="check-note">action-planner.test.ts — 41 tests</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">OutputAnalyzer tests — null, string, schema validation, placeholders, scoring<div class="check-note">output-analyzer.test.ts — 38 tests</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">PromptRegistry tests — registration, versioning, metrics, persistence<div class="check-note">prompt-registry.test.ts — 40 tests</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">DeliberationServices tests — all model call methods<div class="check-note">services.test.ts — 20 tests</div></div></li>
+    </ul>
+
+    <h4>Integration Tests</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Project creation — POST /projects creates project + IdeaVersion v1</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Manual evidence — POST /projects/:id/evidence creates Evidence as pending_review</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Model config — POST /models without secrets, POST /models/:id/test works</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run start — POST /projects/:id/runs creates run, queues BullMQ job</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">New features — 51 tests covering all post-MVP endpoints</div></li>
+    </ul>
+
+    <h4>Mock Adapter Tests</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">MockModelAdapter — deterministic outputs for 15+ prompt types</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">MockSearchAdapter — loads fixture JSON, known query matching, fallback behavior</div></li>
+    </ul>
+
+    <h4>Frontend Tests</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">7 smoke tests — project list, create form, dashboard, evidence, ideas, decisions, model config</div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">E2E browser tests (Playwright/Cypress)<div class="check-note">Not implemented — critical gap</div></div></li>
+    </ul>
+
+    <h4>Test Counts</h4>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-num">604</div><div class="stat-label">API Tests</div></div>
+      <div class="stat"><div class="stat-num">35</div><div class="stat-label">Web Tests</div></div>
+      <div class="stat"><div class="stat-num">139</div><div class="stat-label">Orchestrator Unit Tests</div></div>
+      <div class="stat"><div class="stat-num">639</div><div class="stat-label">Total</div></div>
+    </div>
+
+    <h4>Acceptance Blockers (from Testing Plan)</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Model output cannot bypass schema validation</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Accepted claim cannot exist without evidence or user-premise</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Decision cannot be created without model votes</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Decision cannot be created without ideaVersionId</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Raw events cannot be mutated</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">API keys do not appear in frontend response</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Orchestrator can run using mock models</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">UI can inspect the final decision record</div></li>
+    </ul>
+  </div>
+
+  <!-- NEW FEATURES -->
+  <div id="tab-features" class="tab-content">
+    <h3>New Features (docs/13-new-features.md)</h3>
+
+    <h4>Phase 1: Intelligence &amp; Analysis</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Semantic Search over Past Projects (pgvector + cross-project search)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Evidence Staleness Monitor (stalenessRisk computation, stale endpoint)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Run Comparison Dashboard (side-by-side comparison)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Claim Dependency Graph (API + Prisma model)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Automated Literature Review Mode (LiteratureReview model + API)</div></li>
+    </ul>
+
+    <h4>Phase 2: Feedback &amp; Collaboration</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Confidence Calibration Feedback Loop (ClaimConfidenceHistory + Brier score)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Multi-Project Portfolio View (GET /projects/portfolio)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Collaborative Annotations (threaded, with mentions + resolution)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Evidence Chain Provenance (full audit trail)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Custom Evaluation Criteria (EvidenceCustomScore + UI)</div></li>
+    </ul>
+
+    <h4>Phase 3: Adversarial &amp; Argument</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Adversarial Robustness Score (GET /projects/:id/robustness)</div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">Argument Mapping Export (Toulmin Model)<div class="check-note">Endpoint returns hardcoded data. ArgumentMap Prisma model missing.</div></div></li>
+      <li><span class="check-icon partial">&#9679;</span><div class="check-text">Reproducibility Pack<div class="check-note">Endpoint exists but returns hardcoded data</div></div></li>
+    </ul>
+
+    <h4>Phase 4: Real-time Collaboration</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Live Presence &amp; SSE Events (UserPresence + broadcast)</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">Real-time Annotation Updates via SSE</div></li>
+    </ul>
+
+    <h4>New Frontend Routes</h4>
+    <ul class="checklist">
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/runs/compare — Run Comparison Dashboard</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/literature-reviews — Literature Reviews</div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/projects/[id]/graph — Citation Graph, Calibration, Robustness, Argument Maps</div></li>
+      <li><span class="check-icon missing">&#10007;</span><div class="check-text">/projects/[id]/claim-dependencies — Claim Dependency Graph<div class="check-note">API exists but no frontend page</div></div></li>
+      <li><span class="check-icon done">&#10003;</span><div class="check-text">/settings/evaluation-criteria — Custom Evaluation Criteria</div></li>
+    </ul>
+  </div>
+</section>
+
+<!-- SUMMARY -->
+<section style="padding-top:24px; border-top: 1px solid var(--border);">
+  <h2>Summary</h2>
+  <div class="stat-row" style="margin: 16px 0;">
+    <div class="stat"><div class="stat-num" style="color: var(--accent-green);">82%</div><div class="stat-label">Requirements Met</div></div>
+    <div class="stat"><div class="stat-num" style="color: var(--accent-orange);">12%</div><div class="stat-label">Partial</div></div>
+    <div class="stat"><div class="stat-num" style="color: var(--accent-red);">6%</div><div class="stat-label">Missing</div></div>
+    <div class="stat"><div class="stat-num">639</div><div class="stat-label">Tests Passing</div></div>
+  </div>
+  <p>The system has a strong foundation: the core deliberation pipeline, model gateway, 30+ database models, 18 API route modules, 21 frontend pages, and comprehensive test coverage. The primary risks are in build integrity (TypeScript errors), missing E2E acceptance tests, incomplete feature implementations (ArgumentMap, ReproducibilityPack), and operational gaps (CI/CD, backup strategy). The prioritized fix plan addresses these in 4 phases over 5 weeks.</p>
+</section>
+
+</div><!-- /main -->
+
+<script>
+function showTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Active nav highlighting
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.rail a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 100) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.remove('active');
+    if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>
