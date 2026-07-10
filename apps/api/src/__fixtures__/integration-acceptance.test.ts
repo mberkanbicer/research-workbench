@@ -86,20 +86,18 @@ const { mockPrisma, mockStore } = vi.hoisted(() => {
               : relation;
             let related = Array.from((store[relTable] || new Map()).values())
               .filter((r: any) => r.projectId === item.id || r[table.toLowerCase() + 'Id'] === item.id);
-            function sortItems(arr: any[], orderBy: any) {
+            if (relOpts && typeof relOpts === 'object' && 'orderBy' in (relOpts as any)) {
+              const orderBy = (relOpts as any).orderBy;
               for (const [field, dir] of Object.entries(orderBy)) {
-                const mul = dir === 'desc' ? -1 : 1;
-                arr.sort((a: any, b: any) => {
-                  const av = a[field] instanceof Date ? a[field].getTime() : (a[field] || 0);
-                  const bv = b[field] instanceof Date ? b[field].getTime() : (b[field] || 0);
+                const mul = (dir as string) === 'desc' ? -1 : 1;
+                related.sort((a: any, b: any) => {
+                  const av = a[field] instanceof Date ? (a[field] as Date).getTime() : (a[field] || 0);
+                  const bv = b[field] instanceof Date ? (b[field] as Date).getTime() : (b[field] || 0);
                   if (av > bv) return mul;
                   if (av < bv) return -mul;
                   return 0;
                 });
               }
-            }
-            if (relOpts && typeof relOpts === 'object' && 'orderBy' in (relOpts as any)) {
-              sortItems(related, (relOpts as any).orderBy);
             }
             if (relOpts && typeof relOpts === 'object' && 'take' in (relOpts as any)) {
               related = related.slice(0, (relOpts as any).take);

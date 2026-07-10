@@ -139,13 +139,15 @@ describe('MetaPromptService', () => {
 // ===========================================================================
 // PromptRegistry Retry Integration Tests
 // ===========================================================================
+import fs from 'fs';
+import path from 'path';
+
 describe('PromptRegistry improvement after stage failure', () => {
   it('stageToRole maps all known stage names', () => {
     // Import the GoalSeekingLoop class to access stageToRole
     // This verifies the mapping exists in goal-seeking-loop.ts
-    const fs = require('fs');
     const content = fs.readFileSync(
-      require('path').resolve(__dirname, 'goal-seeking-loop.ts'),
+      path.resolve(__dirname, 'goal-seeking-loop.ts'),
       'utf8',
     );
     // Verify the mapping table exists

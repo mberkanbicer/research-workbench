@@ -294,7 +294,8 @@ export async function runRoutes(fastify: FastifyInstance) {
     const { projectId } = request.params as { projectId: string };
     if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
     const parsed = createRunSchema.parse(request.body);
-    let { modelIds, maxRounds, loopMode, searchProvider, checkpointStages } = parsed;
+    const { modelIds, maxRounds, loopMode, checkpointStages } = parsed;
+    let { searchProvider } = parsed;
     const runId = crypto.randomUUID();
 
     // Fall back to user's defaultSearchProvider when none is specified

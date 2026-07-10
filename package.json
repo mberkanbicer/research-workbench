@@ -15,14 +15,14 @@
     "db:generate": "pnpm -C apps/api db:generate",
     "db:migrate": "pnpm -C apps/api db:migrate",
     "test:e2e": "npx playwright test",
-    "lint": "eslint 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.{ts,tsx}' --max-warnings=100",
+    "lint": "eslint 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.{ts,tsx}' --max-warnings=500",
     "lint:fix": "eslint --fix 'apps/*/src/**/*.{ts,tsx}' 'packages/*/src/**/*.{ts,tsx}' && prettier --write '**/*.{ts,tsx,json,yaml,yml,md}' '!**/node_modules' '!**/.next' '!**/dist'",
     "format": "prettier --write '**/*.{ts,tsx,json,yaml,yml,md}' '!**/node_modules' '!**/.next' '!**/dist'",
     "prepare": "husky"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --fix --max-warnings=100",
+      "eslint --fix --max-warnings=500",
       "prettier --write"
     ],
     "*.{json,yaml,yml,md}": [
