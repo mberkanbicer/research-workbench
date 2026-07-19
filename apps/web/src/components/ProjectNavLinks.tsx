@@ -7,6 +7,7 @@ const links = [
   { href: '/decisions', label: 'Decision Ledger' },
   { href: '/hypotheses', label: 'Hypotheses' },
   { href: '/tasks', label: 'Research Tasks' },
+  { href: '/argument-map', label: 'Argument Map' },
   { href: '/graph', label: 'Citation Graph' },
   { href: '/runs/compare', label: 'Compare Runs' },
   { href: '/literature-reviews', label: 'Literature Reviews' },

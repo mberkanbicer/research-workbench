@@ -543,7 +543,8 @@ export default function ProjectDashboard() {
                 <div className="grid grid-cols-2 gap-1">
                   {[
                     { href: '/evidence', label: 'Evidence', color: 'text-green-600' },
-                    { href: '/graph', label: 'Argument Graph', color: 'text-blue-600' },
+                    { href: '/argument-map', label: 'Argument Map', color: 'text-blue-700' },
+                    { href: '/graph', label: 'Citation Graph', color: 'text-blue-600' },
                     { href: '/ideas', label: 'Ideas', color: 'text-purple-600' },
                     { href: '/decisions', label: 'Decisions', color: 'text-red-600' },
                     { href: '/claim-dependencies', label: 'Dependencies', color: 'text-amber-600' },
