@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import GraphExport from '@/components/GraphExport';
 import UndoRedoToolbar from '@/components/UndoRedoToolbar';
 import { useGraphUndoRedo } from '@/hooks/useGraphUndoRedo';
+import { useGraphKeyboard } from '@/hooks/useGraphKeyboard';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -356,22 +357,20 @@ export default function ArgumentGraphPage() {
   );
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        const restored = undo(nodes);
-        if (restored) setNodes(restored);
-      }
-      if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
-        e.preventDefault();
-        const restored = redo(nodes);
-        if (restored) setNodes(restored);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nodes, undo, redo, setNodes]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const reactFlowWrapper = useRef<any>(null);
+
+  useGraphKeyboard({
+    nodes,
+    edges,
+    selectedNodeId: selectedNode?.id || null,
+    setNodes,
+    setEdges,
+    undo,
+    redo,
+    searchInputRef,
+    onDeleteNode: (id) => setSelectedNode((prev) => (prev?.id === id ? null : prev)),
+  });
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -498,10 +497,11 @@ export default function ArgumentGraphPage() {
             <div>
               <div className="relative">
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search nodes..."
+                  placeholder="Search nodes... (Ctrl+F)"
                   className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none transition-colors"
                 />
                 <svg
@@ -709,6 +709,47 @@ export default function ArgumentGraphPage() {
                 )}
               </div>
             )}
+
+            {/* Keyboard shortcuts */}
+            <div className="border-t pt-3">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                Shortcuts
+              </h3>
+              <div className="space-y-1 text-[11px] text-gray-500">
+                <div className="flex justify-between">
+                  <span>Delete node</span>
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono">
+                    Del
+                  </kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Undo</span>
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono">
+                    Ctrl+Z
+                  </kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Redo</span>
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono">
+                    Ctrl+Shift+Z
+                  </kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Search</span>
+                  <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-mono">
+                    Ctrl+F
+                  </kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>Zoom</span>
+                  <span className="text-gray-400">Scroll wheel</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Pan</span>
+                  <span className="text-gray-400">Click + drag</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Graph canvas */}

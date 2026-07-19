@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import GraphExport from '@/components/GraphExport';
 import UndoRedoToolbar from '@/components/UndoRedoToolbar';
 import { useGraphUndoRedo } from '@/hooks/useGraphUndoRedo';
+import { useGraphKeyboard } from '@/hooks/useGraphKeyboard';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -166,22 +167,20 @@ export default function ClaimDependenciesPage() {
     [nodes, pushToHistory],
   );
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        const r = undo(nodes);
-        if (r) setNodes(r);
-      }
-      if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
-        e.preventDefault();
-        const r = redo(nodes);
-        if (r) setNodes(r);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [nodes, undo, redo, setNodes]);
+  // Keyboard shortcuts
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useGraphKeyboard({
+    nodes,
+    edges,
+    selectedNodeId: selectedNode?.id || null,
+    setNodes,
+    setEdges,
+    undo,
+    redo,
+    searchInputRef,
+    onDeleteNode: (id) => setSelectedNode((prev) => (prev?.id === id ? null : prev)),
+  });
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -267,10 +266,11 @@ export default function ClaimDependenciesPage() {
           {/* Search */}
           <div className="relative">
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search claims..."
+              placeholder="Search claims... (Ctrl+F)"
               className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none transition-colors"
             />
             <svg
