@@ -16,7 +16,7 @@ import {
   useSearchCounterEvidence,
 } from '@/hooks/useApi';
 import { phaseLabels } from '@/lib/eventLabels';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiFetch, API_BASE } from '@/lib/apiFetch';
 import AddEvidenceModal from '@/components/AddEvidenceModal';
 import { ModelSelector } from '@/components/ModelSelector';
@@ -52,6 +52,11 @@ export default function ProjectDashboard() {
   const [checkpointStages, setCheckpointStages] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [exporting, setExporting] = useState<string | null>(null);
+  const [claimSearch, setClaimSearch] = useState('');
+  const [claimStatusFilter, setClaimStatusFilter] = useState<string>('all');
+  const [evidenceSearch, setEvidenceSearch] = useState('');
+  const [evidenceStatusFilter, setEvidenceStatusFilter] = useState<string>('all');
+  const [evidenceTypeFilter, setEvidenceTypeFilter] = useState<string>('all');
   const {
     selectedModelIds,
     searchProvider,
@@ -127,6 +132,30 @@ export default function ProjectDashboard() {
     (v: any) => v.vote === 'accept' || v.vote === 'accept_with_reservations',
   ).length;
   const agreementRate = totalVotes > 0 ? Math.round((agreeVotes / totalVotes) * 100) : null;
+
+  // Filtered claims
+  const filteredClaims = useMemo(() => {
+    const q = claimSearch.toLowerCase().trim();
+    return claims.filter((c: any) => {
+      if (claimStatusFilter !== 'all' && c.status !== claimStatusFilter) return false;
+      if (q && !c.text.toLowerCase().includes(q) && !c.type?.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [claims, claimSearch, claimStatusFilter]);
+
+  // Filtered evidence
+  const filteredEvidence = useMemo(() => {
+    const q = evidenceSearch.toLowerCase().trim();
+    return evidence.filter((ev: any) => {
+      if (evidenceStatusFilter !== 'all' && ev.status !== evidenceStatusFilter) return false;
+      if (evidenceTypeFilter === 'counter' && !ev.isCounter) return false;
+      if (evidenceTypeFilter === 'supporting' && ev.isCounter) return false;
+      if (q && !ev.title?.toLowerCase().includes(q) && !ev.snippet?.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+  }, [evidence, evidenceSearch, evidenceStatusFilter, evidenceTypeFilter]);
 
   const handleExport = async (format: string) => {
     setExporting(format);
@@ -555,7 +584,10 @@ export default function ProjectDashboard() {
             <div className="lg:col-span-2">
               <section className="bg-white rounded-xl border p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Key Claims ({claims.length})</h2>
+                  <h2 className="text-lg font-semibold">
+                    Key Claims ({filteredClaims.length}
+                    {filteredClaims.length !== claims.length ? ` of ${claims.length}` : ''})
+                  </h2>
                   <button
                     onClick={() => version?.id && extractClaims.mutate(version.id)}
                     disabled={extractClaims.isPending}
@@ -564,8 +596,54 @@ export default function ProjectDashboard() {
                     {extractClaims.isPending ? 'Extracting...' : 'Re-extract'}
                   </button>
                 </div>
+                {/* Search and filters */}
+                <div className="flex gap-2 mb-4">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={claimSearch}
+                      onChange={(e) => setClaimSearch(e.target.value)}
+                      placeholder="Search claims..."
+                      className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none"
+                    />
+                    <svg
+                      className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    {claimSearch && (
+                      <button
+                        onClick={() => setClaimSearch('')}
+                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 text-xs"
+                      >
+                        {'\u2715'}
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={claimStatusFilter}
+                    onChange={(e) => setClaimStatusFilter(e.target.value)}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="supported">Supported</option>
+                    <option value="contradicted">Contradicted</option>
+                    <option value="unverified">Unverified</option>
+                    <option value="partially_supported">Partial</option>
+                    <option value="unsupported">Unsupported</option>
+                    <option value="needs_external_validation">Needs Validation</option>
+                  </select>
+                </div>
                 <ul className="space-y-3">
-                  {claims.map((claim: any) => (
+                  {filteredClaims.map((claim: any) => (
                     <ClaimRowItem
                       key={claim.id}
                       claim={claim}
@@ -578,6 +656,11 @@ export default function ProjectDashboard() {
                   {claims.length === 0 && (
                     <p className="text-sm text-gray-400 italic py-8 text-center">
                       No claims extracted yet. Run claim extraction or start a deliberation run.
+                    </p>
+                  )}
+                  {claims.length > 0 && filteredClaims.length === 0 && (
+                    <p className="text-sm text-gray-400 italic py-8 text-center">
+                      No claims match your search. Try adjusting your filters.
                     </p>
                   )}
                 </ul>
@@ -635,7 +718,10 @@ export default function ProjectDashboard() {
         {activeTab === 'evidence' && (
           <section className="bg-white rounded-xl border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Evidence ({evidence.length})</h2>
+              <h2 className="text-lg font-semibold">
+                Evidence ({filteredEvidence.length}
+                {filteredEvidence.length !== evidence.length ? ` of ${evidence.length}` : ''})
+              </h2>
               <button
                 onClick={() => setIsAddEvidenceOpen(true)}
                 className="text-xs bg-green-50 text-green-600 hover:bg-green-100 px-3 py-1.5 rounded-lg border border-green-200"
@@ -643,13 +729,69 @@ export default function ProjectDashboard() {
                 + Add Evidence
               </button>
             </div>
+            {/* Search and filters */}
+            <div className="flex gap-2 mb-4">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={evidenceSearch}
+                  onChange={(e) => setEvidenceSearch(e.target.value)}
+                  placeholder="Search evidence..."
+                  className="w-full text-sm border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none"
+                />
+                <svg
+                  className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                {evidenceSearch && (
+                  <button
+                    onClick={() => setEvidenceSearch('')}
+                    className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600 text-xs"
+                  >
+                    {'\u2715'}
+                  </button>
+                )}
+              </div>
+              <select
+                value={evidenceStatusFilter}
+                onChange={(e) => setEvidenceStatusFilter(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none"
+              >
+                <option value="all">All Status</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+                <option value="pending">Pending</option>
+              </select>
+              <select
+                value={evidenceTypeFilter}
+                onChange={(e) => setEvidenceTypeFilter(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none"
+              >
+                <option value="all">All Types</option>
+                <option value="supporting">Supporting</option>
+                <option value="counter">Counter</option>
+              </select>
+            </div>
             {evidence.length === 0 ? (
               <p className="text-sm text-gray-400 italic py-8 text-center">
                 No evidence yet. Add evidence manually or run the pipeline.
               </p>
+            ) : filteredEvidence.length === 0 ? (
+              <p className="text-sm text-gray-400 italic py-8 text-center">
+                No evidence matches your search. Try adjusting your filters.
+              </p>
             ) : (
               <div className="space-y-3">
-                {evidence.map((ev: any) => (
+                {filteredEvidence.map((ev: any) => (
                   <div key={ev.id} className="p-4 border rounded-lg hover:bg-gray-50">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -657,13 +799,25 @@ export default function ProjectDashboard() {
                         {ev.snippet && (
                           <p className="text-xs text-gray-500 mt-1 line-clamp-2">{ev.snippet}</p>
                         )}
+                        {ev.sourceUrl && (
+                          <a
+                            href={ev.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-blue-500 hover:underline mt-1 block truncate"
+                          >
+                            {ev.sourceUrl}
+                          </a>
+                        )}
                         <div className="flex gap-2 mt-2 text-[10px]">
                           {ev.status && (
                             <span
                               className={`px-1.5 py-0.5 rounded ${
                                 ev.status === 'accepted'
                                   ? 'bg-green-100 text-green-700'
-                                  : 'bg-gray-100 text-gray-600'
+                                  : ev.status === 'rejected'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-600'
                               }`}
                             >
                               {ev.status}
