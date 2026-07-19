@@ -18,7 +18,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import type { CitationGraphData } from '@/hooks/useGraph';
 
-// Extended graph node with all possible properties from the API
+// ─── Types ──────────────────────────────────────────────────────────────
 interface ExtendedGraphNode {
   id: string;
   type: 'claim' | 'evidence' | 'critique' | 'review' | 'decision';
@@ -32,13 +32,13 @@ interface ExtendedGraphNode {
   decisionStatus?: string;
 }
 
-// ─── Color palette ──────────────────────────────────────────────────────
-const NODE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  claim: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
-  evidence: { bg: '#d1fae5', border: '#10b981', text: '#065f46' },
-  critique: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
-  review: { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6' },
-  decision: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b' },
+// ─── Palette ────────────────────────────────────────────────────────────
+const NODE_COLORS: Record<string, { bg: string; border: string; text: string; dim: string }> = {
+  claim: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', dim: '#e0e7ff' },
+  evidence: { bg: '#d1fae5', border: '#10b981', text: '#065f46', dim: '#ccfbf1' },
+  critique: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', dim: '#fef9c3' },
+  review: { bg: '#ede9fe', border: '#8b5cf6', text: '#5b21b6', dim: '#ede9fe' },
+  decision: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', dim: '#fee2e2' },
 };
 
 const STATUS_ICONS: Record<string, string> = {
@@ -50,13 +50,12 @@ const STATUS_ICONS: Record<string, string> = {
   needs_external_validation: '\uD83D\uDD0D',
 };
 
-// ─── Custom node components ─────────────────────────────────────────────
-function ClaimNode({ data }: NodeProps) {
+// ─── Custom nodes ───────────────────────────────────────────────────────
+function ClaimNode({ data, selected }: NodeProps) {
   const colors = NODE_COLORS.claim;
-  const icon = STATUS_ICONS[data.status as string] || '';
   return (
     <div
-      className="px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer hover:shadow-md transition-shadow min-w-[120px] max-w-[220px]"
+      className={`px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer transition-all min-w-[120px] max-w-[220px] ${selected ? 'ring-2 ring-blue-400 ring-offset-1' : ''}`}
       style={{ backgroundColor: colors.bg, borderColor: colors.border }}
     >
       <Handle type="target" position={Position.Top} className="!bg-blue-400" />
@@ -67,7 +66,9 @@ function ClaimNode({ data }: NodeProps) {
         >
           Claim
         </span>
-        {icon && <span className="text-xs">{icon}</span>}
+        {data.status && (
+          <span className="text-xs">{STATUS_ICONS[data.status as string] || ''}</span>
+        )}
       </div>
       <p className="text-xs mt-1 leading-tight" style={{ color: colors.text }}>
         {data.label}
@@ -90,11 +91,11 @@ function ClaimNode({ data }: NodeProps) {
   );
 }
 
-function EvidenceNode({ data }: NodeProps) {
+function EvidenceNode({ data, selected }: NodeProps) {
   const colors = NODE_COLORS.evidence;
   return (
     <div
-      className="px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer hover:shadow-md transition-shadow min-w-[120px] max-w-[220px]"
+      className={`px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer transition-all min-w-[120px] max-w-[220px] ${selected ? 'ring-2 ring-emerald-400 ring-offset-1' : ''}`}
       style={{ backgroundColor: colors.bg, borderColor: colors.border }}
     >
       <Handle type="target" position={Position.Top} className="!bg-emerald-400" />
@@ -120,11 +121,11 @@ function EvidenceNode({ data }: NodeProps) {
   );
 }
 
-function CritiqueNode({ data }: NodeProps) {
+function CritiqueNode({ data, selected }: NodeProps) {
   const colors = NODE_COLORS.critique;
   return (
     <div
-      className="px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer hover:shadow-md transition-shadow min-w-[100px] max-w-[200px]"
+      className={`px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer transition-all min-w-[100px] max-w-[200px] ${selected ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}
       style={{ backgroundColor: colors.bg, borderColor: colors.border }}
     >
       <Handle type="target" position={Position.Top} className="!bg-amber-400" />
@@ -157,11 +158,11 @@ function CritiqueNode({ data }: NodeProps) {
   );
 }
 
-function ReviewNode({ data }: NodeProps) {
+function ReviewNode({ data, selected }: NodeProps) {
   const colors = NODE_COLORS.review;
   return (
     <div
-      className="px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer hover:shadow-md transition-shadow min-w-[100px] max-w-[200px]"
+      className={`px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer transition-all min-w-[100px] max-w-[200px] ${selected ? 'ring-2 ring-violet-400 ring-offset-1' : ''}`}
       style={{ backgroundColor: colors.bg, borderColor: colors.border }}
     >
       <Handle type="target" position={Position.Top} className="!bg-violet-400" />
@@ -179,11 +180,11 @@ function ReviewNode({ data }: NodeProps) {
   );
 }
 
-function DecisionNode({ data }: NodeProps) {
+function DecisionNode({ data, selected }: NodeProps) {
   const colors = NODE_COLORS.decision;
   return (
     <div
-      className="px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer hover:shadow-md transition-shadow min-w-[100px] max-w-[200px]"
+      className={`px-3 py-2 rounded-lg border-2 shadow-sm cursor-pointer transition-all min-w-[100px] max-w-[200px] ${selected ? 'ring-2 ring-red-400 ring-offset-1' : ''}`}
       style={{ backgroundColor: colors.bg, borderColor: colors.border }}
     >
       <Handle type="target" position={Position.Top} className="!bg-red-400" />
@@ -209,7 +210,7 @@ const nodeTypes = {
   decision: DecisionNode,
 };
 
-// ─── Edge styling ───────────────────────────────────────────────────────
+// ─── Edge styles ────────────────────────────────────────────────────────
 function getEdgeStyle(relation?: string) {
   switch (relation) {
     case 'contradicts':
@@ -244,7 +245,7 @@ function getEdgeLabel(relation?: string): string {
   }
 }
 
-// ─── Main component ─────────────────────────────────────────────────────
+// ─── Main ───────────────────────────────────────────────────────────────
 export default function ArgumentGraphPage() {
   const { projectId } = useParams() as { projectId: string };
   const { data: graphDataRaw, isLoading } = useCitationGraph(projectId);
@@ -259,31 +260,54 @@ export default function ArgumentGraphPage() {
   const [filterTypes, setFilterTypes] = useState<Set<string>>(
     new Set(['claim', 'evidence', 'critique', 'review', 'decision']),
   );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [focusMode, setFocusMode] = useState(true);
 
-  // Build React Flow nodes and edges
-  const { initialNodes, initialEdges } = useMemo(() => {
-    if (!graphData) return { initialNodes: [], initialEdges: [] };
+  // Build nodes and edges with search filtering and focus mode
+  const { initialNodes, initialEdges, connectedNodeIds } = useMemo(() => {
+    if (!graphData)
+      return { initialNodes: [], initialEdges: [], connectedNodeIds: new Set<string>() };
 
-    const nodes: Node[] = (graphData.nodes as ExtendedGraphNode[])
-      .filter((n) => filterTypes.has(n.type))
-      .map((n, i) => ({
-        id: n.id,
-        type: n.type,
-        position: {
-          x: (i % 5) * 280 + Math.random() * 40,
-          y: Math.floor(i / 5) * 180 + Math.random() * 40,
-        },
-        data: {
-          label: n.label,
-          status: n.status,
-          criticality: n.criticality,
-          isCounter: n.isCounter,
-          reliability: n.reliability,
-          severity: n.severity,
-          verdict: n.verdict,
-          decisionStatus: n.decisionStatus,
-        },
-      }));
+    const query = searchQuery.toLowerCase().trim();
+
+    // Filter nodes by type AND search query
+    const filteredNodes = (graphData.nodes as ExtendedGraphNode[]).filter((n) => {
+      if (!filterTypes.has(n.type)) return false;
+      if (query && !n.label.toLowerCase().includes(query) && !n.type.toLowerCase().includes(query))
+        return false;
+      return true;
+    });
+
+    // Find connected node IDs for focus mode
+    const selectedId = selectedNode?.id;
+    const connected = new Set<string>();
+    if (selectedId && focusMode) {
+      connected.add(selectedId);
+      for (const e of graphData.edges) {
+        if (e.source === selectedId) connected.add(e.target);
+        if (e.target === selectedId) connected.add(e.source);
+      }
+    }
+
+    const nodes: Node[] = filteredNodes.map((n, i) => ({
+      id: n.id,
+      type: n.type,
+      position: {
+        x: (i % 5) * 280 + Math.random() * 40,
+        y: Math.floor(i / 5) * 180 + Math.random() * 40,
+      },
+      data: {
+        label: n.label,
+        status: n.status,
+        criticality: n.criticality,
+        isCounter: n.isCounter,
+        reliability: n.reliability,
+        severity: n.severity,
+        verdict: n.verdict,
+        decisionStatus: n.decisionStatus,
+      },
+      style: selectedId && focusMode && !connected.has(n.id) ? { opacity: 0.15 } : undefined,
+    }));
 
     const nodeIds = new Set(nodes.map((n) => n.id));
     const edges: Edge[] = graphData.edges
@@ -298,24 +322,28 @@ export default function ArgumentGraphPage() {
         labelBgPadding: [4, 2] as [number, number],
         labelBgBorderRadius: 4,
         markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8', width: 16, height: 16 },
-        style: getEdgeStyle(e.relation),
+        style: {
+          ...getEdgeStyle(e.relation),
+          ...(selectedId && focusMode && !(e.source === selectedId || e.target === selectedId)
+            ? { opacity: 0.08 }
+            : {}),
+        },
         type: 'smoothstep',
       }));
 
-    return { initialNodes: nodes, initialEdges: edges };
-  }, [graphData, filterTypes]);
+    return { initialNodes: nodes, initialEdges: edges, connectedNodeIds: connected };
+  }, [graphData, filterTypes, searchQuery, selectedNode, focusMode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Sync nodes/edges when data or filters change
   useMemo(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-    setSelectedNode(node);
+    setSelectedNode((prev) => (prev?.id === node.id ? null : node));
   }, []);
 
   const onPaneClick = useCallback(() => {
@@ -341,6 +369,25 @@ export default function ArgumentGraphPage() {
     a.click();
     URL.revokeObjectURL(url);
   }, [datasetData, projectId]);
+
+  // Connected nodes for detail panel
+  const connectedNodes = useMemo(() => {
+    if (!selectedNode || !graphData) return [];
+    return graphData.edges
+      .filter((e) => e.source === selectedNode.id || e.target === selectedNode.id)
+      .map((e) => {
+        const otherId = e.source === selectedNode.id ? e.target : e.source;
+        const node = (graphData.nodes as ExtendedGraphNode[]).find((n) => n.id === otherId);
+        return node
+          ? {
+              ...node,
+              relation: e.relation,
+              direction: e.source === selectedNode.id ? 'outgoing' : 'incoming',
+            }
+          : null;
+      })
+      .filter(Boolean) as (ExtendedGraphNode & { relation: string; direction: string })[];
+  }, [selectedNode, graphData]);
 
   if (isLoading) {
     return (
@@ -386,9 +433,7 @@ export default function ArgumentGraphPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                activeTab === tab ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${activeTab === tab ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               {tab === 'graph' ? 'Graph' : tab === 'calibration' ? 'Calibration' : 'Dataset'}
             </button>
@@ -398,8 +443,55 @@ export default function ArgumentGraphPage() {
 
       {activeTab === 'graph' && (
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar: filters + details */}
-          <div className="w-64 border-r bg-white p-3 overflow-y-auto shrink-0 space-y-4">
+          {/* Sidebar */}
+          <div className="w-72 border-r bg-white p-3 overflow-y-auto shrink-0 space-y-4">
+            {/* Search */}
+            <div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search nodes..."
+                  className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none transition-colors"
+                />
+                <svg
+                  className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs"
+                  >
+                    {'\u2715'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Focus mode toggle */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-600">Focus Mode</span>
+              <button
+                onClick={() => setFocusMode(!focusMode)}
+                className={`relative w-9 h-5 rounded-full transition-colors ${focusMode ? 'bg-blue-600' : 'bg-gray-300'}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${focusMode ? 'translate-x-4' : ''}`}
+                />
+              </button>
+            </div>
+
             {/* Filters */}
             <div>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -412,9 +504,7 @@ export default function ArgumentGraphPage() {
                     <button
                       key={type}
                       onClick={() => toggleFilter(type)}
-                      className={`flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-                        filterTypes.has(type) ? 'bg-gray-100' : 'opacity-40'
-                      }`}
+                      className={`flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs font-medium transition-colors ${filterTypes.has(type) ? 'bg-gray-100' : 'opacity-40'}`}
                     >
                       <div
                         className="w-3 h-3 rounded-sm"
@@ -459,7 +549,7 @@ export default function ArgumentGraphPage() {
               </div>
             </div>
 
-            {/* Selected node details */}
+            {/* Selected node detail */}
             {selectedNode && (
               <div className="border-t pt-3">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -522,12 +612,57 @@ export default function ArgumentGraphPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Connected nodes */}
+                {connectedNodes.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                      Connected ({connectedNodes.length})
+                    </h4>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {connectedNodes.map((cn) => (
+                        <button
+                          key={cn.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const node = nodes.find((n) => n.id === cn.id);
+                            if (node) setSelectedNode(node);
+                          }}
+                          className="w-full text-left p-2 rounded bg-white border border-gray-100 hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <div
+                              className="w-2 h-2 rounded-sm"
+                              style={{ backgroundColor: NODE_COLORS[cn.type]?.border || '#94a3b8' }}
+                            />
+                            <span className="text-[9px] font-bold uppercase text-gray-400">
+                              {cn.type}
+                            </span>
+                            <span className="text-[9px] text-gray-300 ml-auto">
+                              {cn.direction === 'outgoing' ? '\u2192' : '\u2190'} {cn.relation}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-600 leading-tight line-clamp-2">
+                            {cn.label}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Graph canvas */}
-          <div className="flex-1 bg-gray-50">
+          <div className="flex-1 bg-gray-50 relative">
+            {/* Search results count */}
+            {searchQuery && (
+              <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-gray-600 shadow-sm border">
+                {initialNodes.length} result{initialNodes.length !== 1 ? 's' : ''} for &ldquo;
+                {searchQuery}&rdquo;
+              </div>
+            )}
             <ReactFlow
               nodes={nodes}
               edges={edges}
