@@ -3,8 +3,10 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCitationGraph, useCalibration, useDatasetExport } from '@/hooks/useApi';
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import GraphExport from '@/components/GraphExport';
+import UndoRedoToolbar from '@/components/UndoRedoToolbar';
+import { useGraphUndoRedo } from '@/hooks/useGraphUndoRedo';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -338,11 +340,38 @@ export default function ArgumentGraphPage() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { pushToHistory, undo, redo, canUndo, canRedo } = useGraphUndoRedo(nodes);
 
   useMemo(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  // Track drag events for undo/redo
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      pushToHistory(nodes);
+    },
+    [nodes, pushToHistory],
+  );
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        const restored = undo(nodes);
+        if (restored) setNodes(restored);
+      }
+      if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+        e.preventDefault();
+        const restored = redo(nodes);
+        if (restored) setNodes(restored);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [nodes, undo, redo, setNodes]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -441,6 +470,18 @@ export default function ArgumentGraphPage() {
             </button>
           ))}
           <div className="w-px h-4 bg-gray-200 mx-1" />
+          <UndoRedoToolbar
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={() => {
+              const r = undo(nodes);
+              if (r) setNodes(r);
+            }}
+            onRedo={() => {
+              const r = redo(nodes);
+              if (r) setNodes(r);
+            }}
+          />
           <GraphExport
             graphRef={graphRef}
             filename={`argument-graph-${projectId}`}
@@ -686,6 +727,7 @@ export default function ArgumentGraphPage() {
               onEdgesChange={onEdgesChange}
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
+              onNodeDragStop={onNodeDragStop}
               nodeTypes={nodeTypes}
               fitView
               fitViewOptions={{ padding: 0.2 }}

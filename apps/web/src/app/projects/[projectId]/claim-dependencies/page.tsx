@@ -3,8 +3,10 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useProjectClaimDependencies, useClaims, useAutoDetectDependencies } from '@/hooks/useApi';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import GraphExport from '@/components/GraphExport';
+import UndoRedoToolbar from '@/components/UndoRedoToolbar';
+import { useGraphUndoRedo } from '@/hooks/useGraphUndoRedo';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -132,11 +134,36 @@ export default function ClaimDependenciesPage() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { pushToHistory, undo, redo, canUndo, canRedo } = useGraphUndoRedo(nodes);
 
   useMemo(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      pushToHistory(nodes);
+    },
+    [nodes, pushToHistory],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        const r = undo(nodes);
+        if (r) setNodes(r);
+      }
+      if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+        e.preventDefault();
+        const r = redo(nodes);
+        if (r) setNodes(r);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [nodes, undo, redo, setNodes]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
@@ -189,6 +216,18 @@ export default function ClaimDependenciesPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <UndoRedoToolbar
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={() => {
+              const r = undo(nodes);
+              if (r) setNodes(r);
+            }}
+            onRedo={() => {
+              const r = redo(nodes);
+              if (r) setNodes(r);
+            }}
+          />
           <GraphExport
             graphRef={graphRef}
             filename={`claim-dependencies-${projectId}`}
@@ -299,6 +338,7 @@ export default function ClaimDependenciesPage() {
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
+            onNodeDragStop={onNodeDragStop}
             nodeTypes={nodeTypes}
             fitView
             fitViewOptions={{ padding: 0.3 }}

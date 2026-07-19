@@ -3,8 +3,10 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useProject, useClaims } from '@/hooks/useApi';
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import GraphExport from '@/components/GraphExport';
+import UndoRedoToolbar from '@/components/UndoRedoToolbar';
+import { useGraphUndoRedo } from '@/hooks/useGraphUndoRedo';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -394,11 +396,36 @@ export default function ArgumentMapPage() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { pushToHistory, undo, redo, canUndo, canRedo } = useGraphUndoRedo(nodes);
 
   useMemo(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      pushToHistory(nodes);
+    },
+    [nodes, pushToHistory],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        const r = undo(nodes);
+        if (r) setNodes(r);
+      }
+      if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+        e.preventDefault();
+        const r = redo(nodes);
+        if (r) setNodes(r);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [nodes, undo, redo, setNodes]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode((prev) => (prev?.id === node.id ? null : node));
@@ -457,6 +484,18 @@ export default function ArgumentMapPage() {
           <span>{counterCount} counter</span>
           <span>{critiques.length} critiques</span>
           <div className="w-px h-4 bg-gray-200" />
+          <UndoRedoToolbar
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={() => {
+              const r = undo(nodes);
+              if (r) setNodes(r);
+            }}
+            onRedo={() => {
+              const r = redo(nodes);
+              if (r) setNodes(r);
+            }}
+          />
           <GraphExport
             graphRef={graphRef}
             filename={`argument-map-${projectId}`}
@@ -550,6 +589,7 @@ export default function ArgumentMapPage() {
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
+            onNodeDragStop={onNodeDragStop}
             nodeTypes={nodeTypes}
             fitView
             fitViewOptions={{ padding: 0.15 }}
