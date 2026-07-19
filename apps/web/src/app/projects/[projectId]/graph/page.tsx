@@ -3,7 +3,8 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCitationGraph, useCalibration, useDatasetExport } from '@/hooks/useApi';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import GraphExport from '@/components/GraphExport';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -262,6 +263,7 @@ export default function ArgumentGraphPage() {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [focusMode, setFocusMode] = useState(true);
+  const graphRef = useRef<HTMLDivElement>(null);
 
   // Build nodes and edges with search filtering and focus mode
   const { initialNodes, initialEdges, connectedNodeIds } = useMemo(() => {
@@ -428,7 +430,7 @@ export default function ArgumentGraphPage() {
             {graphData?.nodes.length || 0} nodes, {graphData?.edges.length || 0} edges
           </span>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
           {(['graph', 'calibration', 'dataset'] as const).map((tab) => (
             <button
               key={tab}
@@ -438,6 +440,12 @@ export default function ArgumentGraphPage() {
               {tab === 'graph' ? 'Graph' : tab === 'calibration' ? 'Calibration' : 'Dataset'}
             </button>
           ))}
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+          <GraphExport
+            graphRef={graphRef}
+            filename={`argument-graph-${projectId}`}
+            jsonData={graphData}
+          />
         </div>
       </div>
 
@@ -663,7 +671,7 @@ export default function ArgumentGraphPage() {
           </div>
 
           {/* Graph canvas */}
-          <div className="flex-1 bg-gray-50 relative">
+          <div ref={graphRef} className="flex-1 bg-gray-50 relative">
             {/* Search results count */}
             {searchQuery && (
               <div className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-gray-600 shadow-sm border">

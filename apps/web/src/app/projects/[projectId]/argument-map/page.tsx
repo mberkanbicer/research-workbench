@@ -3,7 +3,8 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useProject, useClaims } from '@/hooks/useApi';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
+import GraphExport from '@/components/GraphExport';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -209,6 +210,7 @@ export default function ArgumentMapPage() {
   const { data: projectData, isLoading } = useProject(projectId);
   const { data: claimsData } = useClaims(projectId);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
 
   const project = projectData?.data?.project;
   const claims = claimsData?.data || [];
@@ -454,6 +456,12 @@ export default function ArgumentMapPage() {
           <span>{supportingCount} supporting</span>
           <span>{counterCount} counter</span>
           <span>{critiques.length} critiques</span>
+          <div className="w-px h-4 bg-gray-200" />
+          <GraphExport
+            graphRef={graphRef}
+            filename={`argument-map-${projectId}`}
+            jsonData={{ claims, evidence, critiques, decisions }}
+          />
         </div>
       </div>
 
@@ -528,7 +536,7 @@ export default function ArgumentMapPage() {
         </div>
 
         {/* Graph canvas */}
-        <div className="flex-1 bg-gray-50 relative">
+        <div ref={graphRef} className="flex-1 bg-gray-50 relative">
           {/* Swim lane labels */}
           <div className="absolute top-2 left-16 z-10 flex gap-4 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
             <span>Claims</span>

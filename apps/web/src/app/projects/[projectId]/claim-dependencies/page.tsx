@@ -3,7 +3,8 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useProjectClaimDependencies, useClaims, useAutoDetectDependencies } from '@/hooks/useApi';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import GraphExport from '@/components/GraphExport';
 import type { Node, Edge, NodeProps } from 'reactflow';
 import ReactFlow, {
   Background,
@@ -83,6 +84,7 @@ export default function ClaimDependenciesPage() {
   const autoDetect = useAutoDetectDependencies();
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
 
   // Build React Flow data
   const { initialNodes, initialEdges } = useMemo(() => {
@@ -186,13 +188,20 @@ export default function ClaimDependenciesPage() {
             {claims.length} claims, {dependencies.length} dependencies
           </span>
         </div>
-        <button
-          onClick={() => autoDetect.mutate(projectId)}
-          disabled={autoDetect.isPending}
-          className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-        >
-          {autoDetect.isPending ? 'Detecting...' : 'Auto-Detect Dependencies'}
-        </button>
+        <div className="flex items-center gap-2">
+          <GraphExport
+            graphRef={graphRef}
+            filename={`claim-dependencies-${projectId}`}
+            jsonData={{ claims, dependencies }}
+          />
+          <button
+            onClick={() => autoDetect.mutate(projectId)}
+            disabled={autoDetect.isPending}
+            className="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+          >
+            {autoDetect.isPending ? 'Detecting...' : 'Auto-Detect Dependencies'}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -282,7 +291,7 @@ export default function ClaimDependenciesPage() {
         </div>
 
         {/* Graph canvas */}
-        <div className="flex-1 bg-gray-50">
+        <div ref={graphRef} className="flex-1 bg-gray-50">
           <ReactFlow
             nodes={nodes}
             edges={edges}
