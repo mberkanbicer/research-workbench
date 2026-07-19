@@ -212,6 +212,7 @@ export default function ArgumentMapPage() {
   const { data: projectData, isLoading } = useProject(projectId);
   const { data: claimsData } = useClaims(projectId);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const graphRef = useRef<HTMLDivElement>(null);
 
   const project = projectData?.data?.project;
@@ -255,8 +256,19 @@ export default function ArgumentMapPage() {
     const DECISION_Y = 620;
     const CLAIM_SPACING = 380;
 
+    // Filter claims by search query
+    const q = searchQuery.toLowerCase().trim();
+    const filteredClaims = q
+      ? claims.filter(
+          (c: any) =>
+            c.text?.toLowerCase().includes(q) ||
+            c.status?.toLowerCase().includes(q) ||
+            c.type?.toLowerCase().includes(q),
+        )
+      : claims;
+
     // Place claims
-    claims.forEach((claim: any, i: number) => {
+    filteredClaims.forEach((claim: any, i: number) => {
       const x = 200 + i * CLAIM_SPACING;
       nodes.push({
         id: claim.id,
@@ -392,7 +404,7 @@ export default function ArgumentMapPage() {
     });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [claims, evidence, critiques, decisions]);
+  }, [claims, evidence, critiques, decisions, searchQuery]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -507,6 +519,38 @@ export default function ArgumentMapPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="w-56 border-r bg-white p-3 overflow-y-auto shrink-0 space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search nodes..."
+              className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none transition-colors"
+            />
+            <svg
+              className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs"
+              >
+                {'\u2715'}
+              </button>
+            )}
+          </div>
+
           {/* Layer legend */}
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">

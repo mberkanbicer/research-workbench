@@ -86,11 +86,20 @@ export default function ClaimDependenciesPage() {
   const autoDetect = useAutoDetectDependencies();
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const graphRef = useRef<HTMLDivElement>(null);
 
-  // Build React Flow data
+  // Build React Flow data with search filtering
   const { initialNodes, initialEdges } = useMemo(() => {
-    const nodes: Node[] = claims.map((c: any, i: number) => ({
+    const q = searchQuery.toLowerCase().trim();
+    const filteredClaims = claims.filter((c: any) => {
+      if (q && !c.text?.toLowerCase().includes(q) && !c.status?.toLowerCase().includes(q))
+        return false;
+      return true;
+    });
+    const filteredIds = new Set(filteredClaims.map((c: any) => c.id));
+
+    const nodes: Node[] = filteredClaims.map((c: any, i: number) => ({
       id: c.id,
       type: 'claim',
       position: {
@@ -130,7 +139,16 @@ export default function ClaimDependenciesPage() {
       });
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [claims, dependencies]);
+  }, [claims, dependencies, searchQuery]);
+
+  const filteredCount = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return q
+      ? claims.filter(
+          (c: any) => c.text?.toLowerCase().includes(q) || c.status?.toLowerCase().includes(q),
+        ).length
+      : claims.length;
+  }, [claims, searchQuery]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -246,6 +264,43 @@ export default function ClaimDependenciesPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <div className="w-72 border-r bg-white p-4 overflow-y-auto shrink-0 space-y-5">
+          {/* Search */}
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search claims..."
+              className="w-full text-xs border border-gray-200 rounded-lg pl-8 pr-3 py-2 bg-gray-50 focus:bg-white focus:border-blue-300 outline-none transition-colors"
+            />
+            <svg
+              className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs"
+              >
+                {'\u2715'}
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <div className="text-xs text-gray-400">
+              {filteredCount} of {claims.length} claims shown
+            </div>
+          )}
+
           {/* Status legend */}
           <div>
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
