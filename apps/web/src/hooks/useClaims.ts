@@ -58,7 +58,9 @@ export function useClaimConfidenceHistory(projectId: string, claimId: string) {
   return useQuery({
     queryKey: ['claimConfidence', projectId, claimId],
     queryFn: async () => {
-      const res = await apiFetch(`${API_BASE}/projects/${projectId}/claims/${claimId}/confidence-history`);
+      const res = await apiFetch(
+        `${API_BASE}/projects/${projectId}/claims/${claimId}/confidence-history`,
+      );
       return parseJson(res);
     },
     enabled: !!projectId && !!claimId,
@@ -91,7 +93,9 @@ export function useClaimDependencies(claimId: string, projectId?: string) {
   return useQuery({
     queryKey: ['claimDependencies', claimId],
     queryFn: async () => {
-      const res = await apiFetch(`${API_BASE}/projects/${projectId || 'placeholder'}/claims/${claimId}/dependencies`);
+      const res = await apiFetch(
+        `${API_BASE}/projects/${projectId || 'placeholder'}/claims/${claimId}/dependencies`,
+      );
       return parseJson(res);
     },
     enabled: !!claimId,
@@ -101,11 +105,24 @@ export function useClaimDependencies(claimId: string, projectId?: string) {
 export function useAddClaimDependency() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, claimId, targetClaimId, relation }: { projectId: string; claimId: string; targetClaimId: string; relation?: string }) => {
-      const res = await apiFetch(`${API_BASE}/projects/${projectId}/claims/${claimId}/dependencies`, {
-        method: 'POST',
-        body: JSON.stringify({ targetClaimId, relation }),
-      });
+    mutationFn: async ({
+      projectId,
+      claimId,
+      targetClaimId,
+      relation,
+    }: {
+      projectId: string;
+      claimId: string;
+      targetClaimId: string;
+      relation?: string;
+    }) => {
+      const res = await apiFetch(
+        `${API_BASE}/projects/${projectId}/claims/${claimId}/dependencies`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ targetClaimId, relation }),
+        },
+      );
       return parseJson(res);
     },
     onSuccess: () => {
@@ -118,11 +135,25 @@ export function useAutoDetectDependencies() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (projectId: string) => {
-      const res = await apiFetch(`${API_BASE}/projects/${projectId}/claims/auto-detect-dependencies`, { method: 'POST' });
+      const res = await apiFetch(
+        `${API_BASE}/projects/${projectId}/claims/auto-detect-dependencies`,
+        { method: 'POST' },
+      );
       return parseJson(res);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['claimDependencies'] });
     },
+  });
+}
+
+export function useClaimDetail(projectId: string, claimId: string) {
+  return useQuery({
+    queryKey: ['claimDetail', projectId, claimId],
+    queryFn: async () => {
+      const res = await apiFetch(`${API_BASE}/projects/${projectId}/claims/${claimId}/detail`);
+      return parseJson(res);
+    },
+    enabled: !!projectId && !!claimId,
   });
 }

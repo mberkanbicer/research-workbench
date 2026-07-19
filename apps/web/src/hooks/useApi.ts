@@ -49,6 +49,7 @@ export {
   useExtractClaims,
   useUpdateClaim,
   useClaimConfidenceHistory,
+  useClaimDetail,
   useCompareVersions,
   useClaimDependencies,
   useProjectClaimDependencies,
@@ -85,17 +86,9 @@ export {
   useDeleteHypothesis,
 } from './useHypotheses';
 
-export {
-  useSearchProviderSettings,
-  useUpdateSearchProviderSettings,
-} from './useSettings';
+export { useSearchProviderSettings, useUpdateSearchProviderSettings } from './useSettings';
 
-export {
-  usePromptRoles,
-  usePromptHistory,
-  useUpdatePrompt,
-  useResetPrompt,
-} from './usePrompts';
+export { usePromptRoles, usePromptHistory, useUpdatePrompt, useResetPrompt } from './usePrompts';
 
 export {
   useLiteratureReviews,
@@ -127,10 +120,7 @@ export {
   useArgumentMap,
 } from './useGraph';
 
-export {
-  usePresence,
-  useUpdatePresence,
-} from './usePresence';
+export { usePresence, useUpdatePresence } from './usePresence';
 
 export {
   useDocumentPermissions,
@@ -160,6 +150,4 @@ export {
   useCollaborators,
 } from './useCollaboration';
 
-export {
-  useWebSocket,
-} from './useWebSocket';
+export { useWebSocket } from './useWebSocket';

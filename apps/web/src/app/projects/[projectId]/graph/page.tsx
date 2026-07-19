@@ -613,6 +613,14 @@ export default function ArgumentGraphPage() {
                   </div>
                 </div>
 
+                {/* View detail link */}
+                <Link
+                  href={`/projects/${projectId}/claims/${selectedNode.id}`}
+                  className="mt-2 block text-center text-xs text-blue-600 hover:text-blue-800 font-medium py-1.5 rounded bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  View Full Detail &rarr;
+                </Link>
+
                 {/* Connected nodes */}
                 {connectedNodes.length > 0 && (
                   <div className="mt-3">

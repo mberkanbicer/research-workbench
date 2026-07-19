@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../prisma.js';
 import { buildSearchAdapter } from '../orchestrator/service-builder.js';
@@ -8,10 +8,31 @@ import { requireProjectAccess } from './ownership.js';
 
 const UpdateClaimSchema = z.object({
   text: z.string().optional(),
-  type: z.enum(['technical', 'product', 'market', 'business', 'legal', 'ux', 'research', 'risk', 'assumption']).optional(),
+  type: z
+    .enum([
+      'technical',
+      'product',
+      'market',
+      'business',
+      'legal',
+      'ux',
+      'research',
+      'risk',
+      'assumption',
+    ])
+    .optional(),
   requiresEvidence: z.boolean().optional(),
   criticality: z.enum(['low', 'medium', 'high', 'blocking']).optional(),
-  status: z.enum(['unverified', 'supported', 'partially_supported', 'contradicted', 'unsupported', 'needs_external_validation']).optional(),
+  status: z
+    .enum([
+      'unverified',
+      'supported',
+      'partially_supported',
+      'contradicted',
+      'unsupported',
+      'needs_external_validation',
+    ])
+    .optional(),
   confidence: z.number().min(0).max(1).optional(),
 });
 
@@ -46,17 +67,16 @@ export async function claimRoutes(fastify: FastifyInstance) {
     if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
 
     // Get all claim IDs for this project, then find dependencies between them
-    const claimIds = (await prisma.claim.findMany({
-      where: { projectId },
-      select: { id: true },
-    })).map(c => c.id);
+    const claimIds = (
+      await prisma.claim.findMany({
+        where: { projectId },
+        select: { id: true },
+      })
+    ).map((c) => c.id);
 
     const dependencies = await prisma.claimDependency.findMany({
       where: {
-        OR: [
-          { fromClaimId: { in: claimIds } },
-          { toClaimId: { in: claimIds } },
-        ],
+        OR: [{ fromClaimId: { in: claimIds } }, { toClaimId: { in: claimIds } }],
       },
     });
     return { data: dependencies };
@@ -67,8 +87,73 @@ export async function claimRoutes(fastify: FastifyInstance) {
     const claim = await prisma.claim.findFirst({
       where: { id: claimId, project: { userId: request.user?.id } },
     });
-    if (!claim) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
+    if (!claim)
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
     return { data: claim };
+  });
+
+  /**
+   * GET /projects/:projectId/claims/:claimId/detail
+   * Returns a claim with all connected data: evidence, critiques, reviews,
+   * confidence history, and dependencies. Used by the claim detail page.
+   */
+  fastify.get('/projects/:projectId/claims/:claimId/detail', async (request, reply) => {
+    const { projectId, claimId } = request.params as { projectId: string; claimId: string };
+    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+
+    const claim = await prisma.claim.findFirst({ where: { id: claimId, projectId } });
+    if (!claim)
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
+
+    const [evidence, critiques, reviews, confidenceHistory, dependencies] = await Promise.all([
+      prisma.evidence.findMany({ where: { claimId, projectId }, orderBy: { createdAt: 'desc' } }),
+      prisma.critique.findMany({
+        where: { projectId, OR: [{ targetId: claimId }, { claimId: claimId }] },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.modelReview.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' } }),
+      prisma.claimConfidenceHistory.findMany({
+        where: { claimId, projectId },
+        orderBy: { round: 'asc' },
+      }),
+      prisma.claimDependency.findMany({
+        where: { OR: [{ fromClaimId: claimId }, { toClaimId: claimId }] },
+      }),
+    ]);
+
+    // Fetch critique responses
+    const critiqueIds = critiques.map((c) => c.id);
+    const critiqueResponses =
+      critiqueIds.length > 0
+        ? await prisma.critiqueResponse.findMany({
+            where: { critiqueId: { in: critiqueIds } },
+            orderBy: { createdAt: 'desc' },
+          })
+        : [];
+
+    // Fetch related claim IDs from dependencies
+    const relatedClaimIds = dependencies
+      .flatMap((d) =>
+        d.fromClaimId === claimId ? [d.toClaimId] : d.fromClaimId ? [d.fromClaimId] : [],
+      )
+      .filter((id) => id !== claimId);
+    const relatedClaims =
+      relatedClaimIds.length > 0
+        ? await prisma.claim.findMany({ where: { id: { in: relatedClaimIds } } })
+        : [];
+
+    return {
+      data: {
+        claim,
+        evidence,
+        critiques,
+        critiqueResponses,
+        reviews,
+        confidenceHistory,
+        dependencies,
+        relatedClaims,
+      },
+    };
   });
 
   fastify.patch('/claims/:claimId', async (request, reply) => {
@@ -78,7 +163,8 @@ export async function claimRoutes(fastify: FastifyInstance) {
     const existing = await prisma.claim.findFirst({
       where: { id: claimId, project: { userId: request.user?.id } },
     });
-    if (!existing) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
+    if (!existing)
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
 
     const claim = await prisma.claim.update({
       where: { id: claimId },
@@ -95,7 +181,8 @@ export async function claimRoutes(fastify: FastifyInstance) {
     const claim = await prisma.claim.findFirst({
       where: { id: claimId, project: { userId: request.user?.id } },
     });
-    if (!claim) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
+    if (!claim)
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
 
     const searchAdapter = buildSearchAdapter();
     if (!searchAdapter) return reply.status(400).send({ error: 'Search provider not configured' });
@@ -104,35 +191,47 @@ export async function claimRoutes(fastify: FastifyInstance) {
 
     // Deduplication: skip results with URLs already in the project
     const existingUrls = new Set(
-      (await prisma.evidence.findMany({
-        where: { projectId: claim.projectId, sourceUrl: { not: null } },
-        select: { sourceUrl: true }
-      })).map((e: { sourceUrl: string | null }) => e.sourceUrl).filter(Boolean)
+      (
+        await prisma.evidence.findMany({
+          where: { projectId: claim.projectId, sourceUrl: { not: null } },
+          select: { sourceUrl: true },
+        })
+      )
+        .map((e: { sourceUrl: string | null }) => e.sourceUrl)
+        .filter(Boolean),
     );
-    const newResults = results.filter(r => !existingUrls.has(r.url));
+    const newResults = results.filter((r) => !existingUrls.has(r.url));
 
-    const createdEvidence = await Promise.all(newResults.map(async (res) => {
-      const evidence = await prisma.evidence.create({
-        data: {
-          projectId: claim.projectId,
-          claimId: claim.id,
-          sourceUrl: res.url,
-          title: res.title,
-          publisher: res.publisher,
-          publishedAt: res.publishedAt ? new Date(res.publishedAt) : null,
-          sourceType: res.sourceType || 'unknown',
-          excerpt: res.excerpt || res.snippet,
-          summary: res.snippet,
-          status: 'pending_review',
-          reliability: 'pending',
-          relevance: 'pending',
-          stalenessRisk: 'medium',
-          isCounter: true,
-        }
-      });
-      indexEvidenceEmbedding(claim.projectId, evidence.id, evidence.title, evidence.excerpt, evidence.summary);
-      return evidence;
-    }));
+    const createdEvidence = await Promise.all(
+      newResults.map(async (res) => {
+        const evidence = await prisma.evidence.create({
+          data: {
+            projectId: claim.projectId,
+            claimId: claim.id,
+            sourceUrl: res.url,
+            title: res.title,
+            publisher: res.publisher,
+            publishedAt: res.publishedAt ? new Date(res.publishedAt) : null,
+            sourceType: res.sourceType || 'unknown',
+            excerpt: res.excerpt || res.snippet,
+            summary: res.snippet,
+            status: 'pending_review',
+            reliability: 'pending',
+            relevance: 'pending',
+            stalenessRisk: 'medium',
+            isCounter: true,
+          },
+        });
+        indexEvidenceEmbedding(
+          claim.projectId,
+          evidence.id,
+          evidence.title,
+          evidence.excerpt,
+          evidence.summary,
+        );
+        return evidence;
+      }),
+    );
 
     return reply.status(201).send({ data: createdEvidence });
   });
@@ -175,7 +274,10 @@ export async function claimRoutes(fastify: FastifyInstance) {
     const { projectId, claimId } = request.params as { projectId: string; claimId: string };
     if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
 
-    const { targetClaimId, relation } = request.body as { targetClaimId: string; relation?: string };
+    const { targetClaimId, relation } = request.body as {
+      targetClaimId: string;
+      relation?: string;
+    };
 
     // Verify both claims exist and belong to this project
     const [sourceClaim, targetClaim] = await Promise.all([
@@ -187,7 +289,11 @@ export async function claimRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Claim not found' } });
     }
     if (sourceClaim.projectId !== projectId || targetClaim.projectId !== projectId) {
-      return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'Claims must belong to the same project' } });
+      return reply
+        .status(400)
+        .send({
+          error: { code: 'VALIDATION_ERROR', message: 'Claims must belong to the same project' },
+        });
     }
 
     const dependency = await prisma.claimDependency.create({
@@ -205,13 +311,20 @@ export async function claimRoutes(fastify: FastifyInstance) {
    * DELETE /projects/:projectId/claims/:claimId/dependencies/:dependencyId
    * Remove a dependency.
    */
-  fastify.delete('/projects/:projectId/claims/:claimId/dependencies/:dependencyId', async (request, reply) => {
-    const { projectId, dependencyId } = request.params as { projectId: string; claimId: string; dependencyId: string };
-    if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
+  fastify.delete(
+    '/projects/:projectId/claims/:claimId/dependencies/:dependencyId',
+    async (request, reply) => {
+      const { projectId, dependencyId } = request.params as {
+        projectId: string;
+        claimId: string;
+        dependencyId: string;
+      };
+      if (!(await requireProjectAccess(prisma, reply, projectId, request.user?.id))) return;
 
-    await prisma.claimDependency.delete({ where: { id: dependencyId } });
-    return { data: { deleted: true } };
-  });
+      await prisma.claimDependency.delete({ where: { id: dependencyId } });
+      return { data: { deleted: true } };
+    },
+  );
 
   /**
    * POST /projects/:projectId/claims/auto-detect-dependencies
@@ -223,7 +336,9 @@ export async function claimRoutes(fastify: FastifyInstance) {
 
     const claims = await prisma.claim.findMany({ where: { projectId } });
     if (claims.length < 2) {
-      return { data: { dependencies: [], message: 'Need at least 2 claims to detect dependencies' } };
+      return {
+        data: { dependencies: [], message: 'Need at least 2 claims to detect dependencies' },
+      };
     }
 
     // Simple heuristic: detect dependencies based on keyword overlap
@@ -236,9 +351,19 @@ export async function claimRoutes(fastify: FastifyInstance) {
         const target = claims[j];
 
         // Check if source claim's text contains keywords from target
-        const sourceWords = new Set(source.text.toLowerCase().split(/\s+/).filter(w => w.length > 4));
-        const targetWords = new Set(target.text.toLowerCase().split(/\s+/).filter(w => w.length > 4));
-        const overlap = [...sourceWords].filter(w => targetWords.has(w));
+        const sourceWords = new Set(
+          source.text
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w) => w.length > 4),
+        );
+        const targetWords = new Set(
+          target.text
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((w) => w.length > 4),
+        );
+        const overlap = [...sourceWords].filter((w) => targetWords.has(w));
 
         if (overlap.length >= 2) {
           dependencies.push({
@@ -255,7 +380,9 @@ export async function claimRoutes(fastify: FastifyInstance) {
     for (const dep of dependencies) {
       try {
         const existing = await prisma.claimDependency.findUnique({
-          where: { fromClaimId_toClaimId: { fromClaimId: dep.fromClaimId, toClaimId: dep.toClaimId } },
+          where: {
+            fromClaimId_toClaimId: { fromClaimId: dep.fromClaimId, toClaimId: dep.toClaimId },
+          },
         });
         if (!existing) {
           const created = await prisma.claimDependency.create({ data: dep });
